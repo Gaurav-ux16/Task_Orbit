@@ -1,0 +1,549 @@
+{
+  "info": {
+    "name": "TaskOrbit API & Academic Demonstrations",
+    "description": "Comprehensive Postman API Collection for TaskOrbit (Express Backend, Workflow Transitions, Conflict Engine, Stale Review Rejection) and Unit IV Spring Boot Reporting Academic Demo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "springBootUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "pmUserId",
+      "value": "manager-001",
+      "type": "string"
+    },
+    {
+      "key": "assigneeUserId",
+      "value": "assignee-001",
+      "type": "string"
+    },
+    {
+      "key": "reviewerUserId",
+      "value": "reviewer-001",
+      "type": "string"
+    },
+    {
+      "key": "clientUserId",
+      "value": "client-001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Main Express API (Authoritative Workflow)",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Worker Directory & Profiles",
+          "item": [
+            {
+              "name": "List Workers Directory",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/workers",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "workers"]
+                }
+              }
+            },
+            {
+              "name": "List All Profiles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/profiles",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "profiles"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Projects",
+          "item": [
+            {
+              "name": "List Projects",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/projects",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "projects"]
+                }
+              }
+            },
+            {
+              "name": "Get Project by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/projects/22222222-0000-0000-0000-000000000001",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "projects", "22222222-0000-0000-0000-000000000001"]
+                }
+              }
+            },
+            {
+              "name": "Create Project",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Enterprise Cloud Migration\",\n  \"description\": \"Migrate microservices to secure cloud infrastructure.\",\n  \"client_id\": \"{{clientUserId}}\",\n  \"manager_id\": \"{{pmUserId}}\",\n  \"start_date\": \"2026-11-01\",\n  \"due_date\": \"2027-01-31\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/projects",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "projects"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tasks & Conflict Engine",
+          "item": [
+            {
+              "name": "Task Retrieval (All Tasks)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks"]
+                }
+              }
+            },
+            {
+              "name": "Task Retrieval by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000001",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000001"]
+                }
+              }
+            },
+            {
+              "name": "Conflict Preview (Pre-Commit Scan)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"assignee_id\": \"assignee-001\",\n  \"start_date\": \"2026-10-18\",\n  \"due_date\": \"2026-10-25\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/new/conflict-preview",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "new", "conflict-preview"]
+                }
+              }
+            },
+            {
+              "name": "Create Task - Rejected on Conflict (HTTP 409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"project_id\": \"22222222-0000-0000-0000-000000000001\",\n  \"title\": \"Conflicting Module Work\",\n  \"description\": \"Attempting to create overlapping task without override\",\n  \"assignee_id\": \"assignee-001\",\n  \"priority\": \"high\",\n  \"start_date\": \"2026-10-18\",\n  \"due_date\": \"2026-10-25\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks"]
+                }
+              }
+            },
+            {
+              "name": "Create Task - Confirmed Override with Two-Way Links (HTTP 201)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"project_id\": \"22222222-0000-0000-0000-000000000001\",\n  \"title\": \"Overridden Conflicting Task\",\n  \"description\": \"Created with confirmed conflict override\",\n  \"assignee_id\": \"assignee-001\",\n  \"priority\": \"high\",\n  \"start_date\": \"2026-10-18\",\n  \"due_date\": \"2026-10-25\",\n  \"override_conflicts\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Workflow State Transitions",
+          "item": [
+            {
+              "name": "Starting a Task (todo -> in_progress by Assignee)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{assigneeUserId}}" },
+                  { "key": "X-Dev-Role", "value": "assignee" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"in_progress\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000006/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000006", "status"]
+                }
+              }
+            },
+            {
+              "name": "Begin Review (submitted -> in_review by Reviewer)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
+                  { "key": "X-Dev-Role", "value": "reviewer" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"in_review\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000002/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000002", "status"]
+                }
+              }
+            },
+            {
+              "name": "Invalid State Transition Rejected (HTTP 409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{assigneeUserId}}" },
+                  { "key": "X-Dev-Role", "value": "assignee" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000006/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000006", "status"]
+                }
+              }
+            },
+            {
+              "name": "Unauthorized Role Action Rejected (HTTP 403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
+                  { "key": "X-Dev-Role", "value": "reviewer" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"in_progress\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000006/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000006", "status"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submissions & Reviews",
+          "item": [
+            {
+              "name": "Submission Creation (Assignee Submits Deliverable)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "application/json": "true" },
+                  { "key": "X-Dev-User-Id", "value": "{{assigneeUserId}}" },
+                  { "key": "X-Dev-Role", "value": "assignee" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"deliverable_url\": \"https://storage.taskorbit.local/deliverables/v2_final.zip\",\n  \"notes\": \"Completed all refactorings and passing tests.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000001/submissions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000001", "submissions"]
+                }
+              }
+            },
+            {
+              "name": "Get Pending Reviews Queue",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
+                  { "key": "X-Dev-Role", "value": "reviewer" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/reviews/pending",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "reviews", "pending"]
+                }
+              }
+            },
+            {
+              "name": "Valid Review Decision (Approve Latest Version)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
+                  { "key": "X-Dev-Role", "value": "reviewer" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"approved\",\n  \"feedback\": \"All unit tests pass and code quality meets standards.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/submissions/44444444-0000-0000-0000-000000000001/reviews",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "submissions", "44444444-0000-0000-0000-000000000001", "reviews"]
+                }
+              }
+            },
+            {
+              "name": "Stale Review Rejection (HTTP 409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
+                  { "key": "X-Dev-Role", "value": "reviewer" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"approved\",\n  \"feedback\": \"Attempting to approve an outdated v1 submission.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/submissions/44444444-0000-0000-0000-000000000004/reviews",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "submissions", "44444444-0000-0000-0000-000000000004", "reviews"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client Project Requests & Activity Log",
+          "item": [
+            {
+              "name": "List Client Project Requests",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "X-Dev-User-Id", "value": "{{clientUserId}}" },
+                  { "key": "X-Dev-Role", "value": "client" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/project-requests",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "project-requests"]
+                }
+              }
+            },
+            {
+              "name": "Create Client Project Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-Dev-User-Id", "value": "{{clientUserId}}" },
+                  { "key": "X-Dev-Role", "value": "client" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"client_id\": \"{{clientUserId}}\",\n  \"title\": \"Security Audit Integration\",\n  \"description\": \"Automated penetration testing and vulnerability reports.\",\n  \"priority\": \"high\",\n  \"requested_deadline\": \"2026-12-15\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/project-requests",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "project-requests"]
+                }
+              }
+            },
+            {
+              "name": "Inspect Activity Log",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
+                  { "key": "X-Dev-Role", "value": "project_manager" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/activity",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "activity"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Unit IV Spring Boot Reporting Academic Demo",
+      "item": [
+        {
+          "name": "Actuator Health Check (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{springBootUrl}}/actuator/health",
+              "host": ["{{springBootUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        },
+        {
+          "name": "Public Reports Overview (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{springBootUrl}}/api/reports/public",
+              "host": ["{{springBootUrl}}"],
+              "path": ["api", "reports", "public"]
+            }
+          }
+        },
+        {
+          "name": "Spring Security Rejection Without Auth (HTTP 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{springBootUrl}}/api/reports/projects",
+              "host": ["{{springBootUrl}}"],
+              "path": ["api", "reports", "projects"]
+            }
+          }
+        },
+        {
+          "name": "Project Completion Reports (Basic Auth: manager)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "manager", "type": "string" },
+                { "key": "password", "value": "manager123", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{springBootUrl}}/api/reports/projects",
+              "host": ["{{springBootUrl}}"],
+              "path": ["api", "reports", "projects"]
+            }
+          }
+        },
+        {
+          "name": "Worker Workload Reports (Basic Auth: manager)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "manager", "type": "string" },
+                { "key": "password", "value": "manager123", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{springBootUrl}}/api/reports/workers",
+              "host": ["{{springBootUrl}}"],
+              "path": ["api", "reports", "workers"]
+            }
+          }
+        },
+        {
+          "name": "Conflict Overrides Audit (Basic Auth: manager)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "manager", "type": "string" },
+                { "key": "password", "value": "manager123", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{springBootUrl}}/api/reports/conflicts",
+              "host": ["{{springBootUrl}}"],
+              "path": ["api", "reports", "conflicts"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

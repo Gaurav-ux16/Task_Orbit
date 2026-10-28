@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+    <display-name>TaskOrbit — Unit III Servlet and JSP Academic Demo</display-name>
+    <description>
+        Educational demonstration web application for Computer Engineering Web Technology:
+        Servlets, Lifecycle, Sessions, Cookies, JavaBeans, MVC, Concurrency, and JSP.
+    </description>
+
+    <!-- Context Initialization Parameters -->
+    <context-param>
+        <param-name>applicationName</param-name>
+        <param-value>TaskOrbit Academic Demo</param-value>
+    </context-param>
+    <context-param>
+        <param-name>dbDemoUrl</param-name>
+        <param-value>jdbc:mysql://localhost:3306/taskorbit_servlet_demo?useSSL=false&amp;allowPublicKeyRetrieval=true</param-value>
+    </context-param>
+
+    <!-- 1. Hello World Servlet -->
+    <servlet>
+        <servlet-name>HelloWorldServlet</servlet-name>
+        <servlet-class>io.taskorbit.demo.controller.HelloWorldServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>HelloWorldServlet</servlet-name>
+        <url-pattern>/hello</url-pattern>
+    </servlet-mapping>
+
+    <!-- 2. Dynamic Content Task Status Servlet -->
+    <servlet>
+        <servlet-name>TaskStatusServlet</servlet-name>
+        <servlet-class>io.taskorbit.demo.controller.TaskStatusServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TaskStatusServlet</servlet-name>
+        <url-pattern>/task-status</url-pattern>
+    </servlet-mapping>
+
+    <!-- 3. MVC Controller Servlet (JavaBeans + JSP Forwarding) -->
+    <servlet>
+        <servlet-name>TaskControllerServlet</servlet-name>
+        <servlet-class>io.taskorbit.demo.controller.TaskControllerServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TaskControllerServlet</servlet-name>
+        <url-pattern>/tasks</url-pattern>
+    </servlet-mapping>
+
+    <!-- 4. Session & Cookie Preference Servlet -->
+    <servlet>
+        <servlet-name>SessionPreferenceServlet</servlet-name>
+        <servlet-class>io.taskorbit.demo.controller.SessionPreferenceServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SessionPreferenceServlet</servlet-name>
+        <url-pattern>/session-pref</url-pattern>
+    </servlet-mapping>
+
+    <!-- Session Configuration -->
+    <session-config>
+        <session-timeout>30</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+            <secure>false</secure>
+        </cookie-config>
+    </session-config>
+
+    <!-- Welcome File -->
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+</web-app>
