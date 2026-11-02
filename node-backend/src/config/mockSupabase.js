@@ -7,7 +7,18 @@ import { v4 as uuidv4 } from 'uuid';
  */
 
 // Initial seed store
+// bcrypt hash (cost 10) of the documented DEV-ONLY demo password. Matches database/seed.sql.
+export const DEMO_PASSWORD_HASH = '$2b$10$t45DVoHmjSqQpgFbO7whceqp6hc7yYe9/Pzc8i6eFfS0P4KqnS2dq';
+const AUTH_DEFAULTS = { password_hash: DEMO_PASSWORD_HASH, failed_logins: 0, locked_until: null, last_login_at: null };
+
 function getInitialStore() {
+  const store = buildStore();
+  store.profiles = store.profiles.map((p) => ({ ...AUTH_DEFAULTS, created_at: '2026-09-01T00:00:00.000Z', ...p }));
+  store.sessions = [];
+  return store;
+}
+
+function buildStore() {
   return {
     profiles: [
       { id: 'client-001',   display_name: 'Alice Chen (Client)',            role: 'client',          skills: ['Product Management', 'Requirement Scoping'], availability: 'available', email: 'alice@clientcorp.io' },
@@ -283,6 +294,28 @@ function getInitialStore() {
 }
 
 const STORE = getInitialStore();
+
+const UNIQUE_KEYS = {
+  profiles: [['email']],
+  submissions: [['task_id', 'version_number']],
+  sessions: [['token_hash']],
+};
+const RELATION_KEYS = ['client', 'manager', 'assignee', 'submitter', 'reviewer', 'project', 'tasks', 'submission', 'actor'];
+const publicProfile = (p) => (p ? { id: p.id, display_name: p.display_name, role: p.role } : null);
+
+/** Splits a PostgREST select string on top-level commas. */
+function splitSelect(columns) {
+  const out = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of columns) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
 const STORAGE_FILES = new Map();
 
 class QueryBuilder {
@@ -296,15 +329,38 @@ class QueryBuilder {
     this.pendingInsert = null;
     this.pendingUpdate = null;
     this.pendingDelete = false;
+    this.isMaybe = false;
   }
 
-  select(columns = '*', options = {}) {
+  select(columns = '*') {
     this.selectColumns = columns;
     return this;
   }
 
   eq(column, value) {
     this.filters.push((row) => row[column] === value);
+    return this;
+  }
+
+  neq(column, value) {
+    this.filters.push((row) => row[column] !== value);
+    return this;
+  }
+
+  gt(column, value) { this.filters.push((row) => row[column] > value); return this; }
+  gte(column, value) { this.filters.push((row) => row[column] >= value); return this; }
+  lt(column, value) { this.filters.push((row) => row[column] < value); return this; }
+  lte(column, value) { this.filters.push((row) => row[column] <= value); return this; }
+  is(column, value) { this.filters.push((row) => (row[column] ?? null) === value); return this; }
+  ilike(column, value) {
+    const needle = String(value).toLowerCase();
+    this.filters.push((row) => String(row[column] ?? '').toLowerCase() === needle);
+    return this;
+  }
+
+  maybeSingle() {
+    this.isSingle = true;
+    this.isMaybe = true;
     return this;
   }
 
@@ -355,35 +411,59 @@ class QueryBuilder {
     return this;
   }
 
+  _violatesUnique(record) {
+    for (const cols of UNIQUE_KEYS[this.table] || []) {
+      const dupe = (STORE[this.table] || []).some((row) =>
+        cols.every((c) => row[c] !== undefined && row[c] !== null && String(row[c]).toLowerCase() === String(record[c]).toLowerCase())
+      );
+      if (dupe) return cols;
+    }
+    return null;
+  }
+
   _execute() {
     let rows = STORE[this.table] || [];
 
     // Handle Insert
     if (this.pendingInsert) {
-      const inserted = this.pendingInsert.map((item) => {
+      const inserted = [];
+      for (const item of this.pendingInsert) {
         const record = {
           id: item.id || uuidv4(),
           created_at: item.created_at || new Date().toISOString(),
           updated_at: item.updated_at || new Date().toISOString(),
           ...item,
         };
+        const dupe = this._violatesUnique(record);
+        if (dupe) {
+          return {
+            data: null,
+            error: { message: `duplicate key value violates unique constraint on (${dupe.join(', ')})`, code: '23505' },
+          };
+        }
         rows.push(record);
-        return record;
-      });
-      const data = this.isSingle ? inserted[0] : inserted;
-      return { data, error: null };
+        inserted.push(record);
+      }
+      const projected = inserted.map((r) => this._project(r));
+      return { data: this.isSingle ? projected[0] : projected, error: null };
     }
 
     // Filter
-    let filtered = rows.filter((row) => this.filters.every((fn) => fn(row)));
+    const filtered = rows.filter((row) => this.filters.every((fn) => fn(row)));
 
     // Handle Update
     if (this.pendingUpdate) {
       filtered.forEach((row) => {
         Object.assign(row, this.pendingUpdate, { updated_at: new Date().toISOString() });
       });
-      const data = this.isSingle ? (filtered[0] || null) : filtered;
-      return { data, error: null };
+      const projected = filtered.map((r) => this._project(r));
+      if (this.isSingle) {
+        return {
+          data: projected[0] || null,
+          error: projected[0] || this.isMaybe ? null : { message: 'Row not found', code: 'PGRST116' },
+        };
+      }
+      return { data: projected, error: null };
     }
 
     // Handle Delete
@@ -408,62 +488,68 @@ class QueryBuilder {
     const totalCount = filtered.length;
 
     // Range / Limit
+    let page = filtered;
     if (this.rangeLimit) {
       const { from, to } = this.rangeLimit;
-      filtered = filtered.slice(from, to + 1);
+      page = filtered.slice(from, to + 1);
     }
 
-    // Hydrate relations / joins
-    const result = filtered.map((row) => this._hydrateRelations(row));
+    const result = page.map((row) => this._project(row));
 
     if (this.isSingle) {
       const singleRow = result[0] || null;
       return {
         data: singleRow,
-        error: singleRow ? null : { message: 'Row not found', code: 'PGRST116' },
+        error: singleRow || this.isMaybe ? null : { message: 'Row not found', code: 'PGRST116' },
       };
     }
 
     return { data: result, count: totalCount, error: null };
   }
 
-  _hydrateRelations(row) {
-    const copy = { ...row };
+  /** Applies the PostgREST-style select list (own columns + embedded relations). */
+  _project(row) {
+    const tokens = splitSelect(this.selectColumns || '*');
+    const out = {};
+    for (const token of tokens) {
+      if (token === '*') {
+        Object.assign(out, row);
+        continue;
+      }
+      const paren = token.indexOf('(');
+      if (paren === -1) {
+        if (token in row) out[token] = row[token];
+        continue;
+      }
+      const head = token.slice(0, paren);
+      const alias = head.includes(':') ? head.split(':')[0].trim() : head.trim();
+      const inner = token.slice(paren + 1, token.lastIndexOf(')'));
+      const cols = splitSelect(inner).filter((c) => !c.includes('('));
+      const related = this._resolveRelation(alias, row);
+      const pick = (obj) => {
+        if (!obj) return obj;
+        if (cols.includes('*') || cols.length === 0) return { ...obj };
+        return Object.fromEntries(cols.filter((c) => c in obj).map((c) => [c, obj[c]]));
+      };
+      out[alias] = Array.isArray(related) ? related.map(pick) : pick(related);
+    }
+    return out;
+  }
 
-    // Hydrate client:profiles!
-    if (copy.client_id) {
-      copy.client = STORE.profiles.find((p) => p.id === copy.client_id) || null;
+  _resolveRelation(alias, row) {
+    const profile = (id) => (id ? publicProfile(STORE.profiles.find((p) => p.id === id)) : null);
+    switch (alias) {
+      case 'client': return profile(row.client_id);
+      case 'manager': return profile(row.manager_id);
+      case 'assignee': return profile(row.assignee_id);
+      case 'submitter': return profile(row.submitted_by);
+      case 'reviewer': return profile(row.reviewer_id);
+      case 'actor': return profile(row.actor_id);
+      case 'project': return STORE.projects.find((p) => p.id === row.project_id) || null;
+      case 'tasks': return STORE.tasks.filter((t) => t.project_id === row.id);
+      case 'submission': return STORE.submissions.find((s) => s.id === row.submission_id) || null;
+      default: return null;
     }
-    // Hydrate manager:profiles!
-    if (copy.manager_id) {
-      copy.manager = STORE.profiles.find((p) => p.id === copy.manager_id) || null;
-    }
-    // Hydrate assignee:profiles!
-    if (copy.assignee_id) {
-      copy.assignee = STORE.profiles.find((p) => p.id === copy.assignee_id) || null;
-    }
-    // Hydrate submitter:profiles!
-    if (copy.submitted_by) {
-      copy.submitter = STORE.profiles.find((p) => p.id === copy.submitted_by) || null;
-    }
-    // Hydrate reviewer:profiles!
-    if (copy.reviewer_id) {
-      copy.reviewer = STORE.profiles.find((p) => p.id === copy.reviewer_id) || null;
-    }
-    // Hydrate project:projects
-    if (copy.project_id) {
-      copy.project = STORE.projects.find((p) => p.id === copy.project_id) || null;
-    }
-    // Hydrate tasks for project
-    if (this.table === 'projects') {
-      copy.tasks = STORE.tasks.filter((t) => t.project_id === copy.id);
-    }
-    // Hydrate submission for review
-    if (copy.submission_id) {
-      copy.submission = STORE.submissions.find((s) => s.id === copy.submission_id) || null;
-    }
-
-    return copy;
   }
 
   // Promise interface
@@ -513,3 +599,11 @@ export const mockSupabase = {
     },
   },
 };
+
+/** Test helper: restore the pristine seed data. */
+export function resetMockStore() {
+  const fresh = getInitialStore();
+  for (const key of Object.keys(STORE)) delete STORE[key];
+  Object.assign(STORE, fresh);
+  STORAGE_FILES.clear();
+}

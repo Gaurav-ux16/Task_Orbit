@@ -1,23 +1,36 @@
-/**
- * Centralized error handler middleware.
- * Catches errors thrown by controllers and returns consistent JSON responses.
- */
-export function errorHandler(err, req, res, next) {
-  console.error(`[ERROR] ${req.method} ${req.path}:`, err.message || err);
+import { isProduction } from '../config/env.js';
 
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || 'Internal server error';
+/**
+ * Centralised error handler. Clients get a stable JSON envelope; stack traces and
+ * internal messages for 5xx errors are never sent in production.
+ */
+export function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+  let status = err.status || err.statusCode || 500;
+
+  // body-parser errors
+  if (err.type === 'entity.parse.failed') status = 400;
+  if (err.type === 'entity.too.large') status = 413;
+
+  if (status >= 500) {
+    console.error(`[ERROR] ${req.id || '-'} ${req.method} ${req.path}:`, err.message || err);
+  }
+
+  let message;
+  if (err.type === 'entity.parse.failed') message = 'Malformed JSON body';
+  else if (err.type === 'entity.too.large') message = 'Request body too large';
+  else if (status >= 500 && isProduction()) message = 'Internal server error';
+  else message = err.message || 'Internal server error';
 
   res.status(status).json({
     success: false,
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(err.details && { details: err.details }),
+    ...(req.id && { requestId: req.id }),
+    ...(process.env.NODE_ENV === 'development' && status >= 500 && { stack: err.stack }),
   });
 }
 
-/**
- * 404 handler for unmatched routes.
- */
+/** 404 handler for unmatched routes. */
 export function notFoundHandler(req, res) {
-  res.status(404).json({ success: false, error: `Route ${req.method} ${req.path} not found` });
+  res.status(404).json({ success: false, error: 'Route not found' });
 }

@@ -77,6 +77,7 @@ export async function checkSupabaseConnectivity() {
       ok: true,
       configured: false,
       connected: false,
+      latencyMs: 0,
       message: 'Supabase is not configured (missing or placeholder environment variables in node-backend/.env)',
     };
   }
@@ -137,6 +138,7 @@ export async function checkSupabaseConnectivity() {
 
 // ── Default Client Selection ──────────────────────────────────────────────────
 let client;
+let mockInUse = false;
 
 const isTestEnv = process.env.NODE_ENV === 'test' && !process.env.TEST_LIVE_SUPABASE;
 const useMockFallback = process.env.USE_MOCK_FALLBACK === 'true';
@@ -144,9 +146,11 @@ const useMockFallback = process.env.USE_MOCK_FALLBACK === 'true';
 if (isTestEnv) {
   // Isolated test execution using embedded seed store
   client = mockSupabase;
+  mockInUse = true;
 } else if (useMockFallback) {
   console.log('[TaskOrbit] 🚀 Using embedded in-memory database pre-seeded with database/seed.sql (USE_MOCK_FALLBACK=true).');
   client = mockSupabase;
+  mockInUse = true;
 } else if (isSupabaseConfigured()) {
   try {
     client = getSupabase({ requireServiceRole: true });
@@ -154,11 +158,16 @@ if (isTestEnv) {
   } catch (err) {
     console.warn('[TaskOrbit Warning] Supabase client initialization error:', err.message);
     client = mockSupabase;
+  mockInUse = true;
   }
 } else {
   console.log('[TaskOrbit] 🚀 Using embedded in-memory database pre-seeded with database/seed.sql.');
   console.log('[TaskOrbit] To connect a live Supabase project, set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in node-backend/.env.');
   client = mockSupabase;
+  mockInUse = true;
 }
+
+/** True when the embedded demo store (not a real database) is serving requests. */
+export const usingMockDatabase = () => mockInUse;
 
 export default client;
