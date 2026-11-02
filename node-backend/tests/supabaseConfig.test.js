@@ -1,5 +1,4 @@
-import request from 'supertest';
-import app from '../src/app.js';
+import { signIn, anonymous, USERS } from './helpers.js';
 import { isSupabaseConfigured, checkSupabaseConnectivity } from '../src/config/supabase.js';
 
 describe('Supabase backend configuration and connectivity integration', () => {
@@ -24,7 +23,8 @@ describe('Supabase backend configuration and connectivity integration', () => {
   });
 
   test('GET /api/supabase/status returns configured status and storage bucket without exposing secret keys', async () => {
-    const res = await request(app).get('/api/supabase/status');
+    const manager = await signIn(USERS.manager);
+    const res = await manager.get('/api/supabase/status');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body).toHaveProperty('configured');
@@ -36,7 +36,8 @@ describe('Supabase backend configuration and connectivity integration', () => {
   });
 
   test('GET /api/supabase/connectivity performs safe non-destructive probe', async () => {
-    const res = await request(app).get('/api/supabase/connectivity');
+    const manager = await signIn(USERS.manager);
+    const res = await manager.get('/api/supabase/connectivity');
     // Returns 200 if connected or safely handled, 502 if network/DNS blocked
     expect([200, 502]).toContain(res.status);
     expect(res.body).toHaveProperty('configured');
@@ -45,6 +46,12 @@ describe('Supabase backend configuration and connectivity integration', () => {
     // Ensure no secrets leaked
     expect(JSON.stringify(res.body)).not.toContain('eyJ');
   }, 15000);
+
+  test('diagnostic endpoints require a signed-in project manager', async () => {
+    expect((await anonymous().get('/api/supabase/status')).status).toBe(401);
+    const carol = await signIn(USERS.carol);
+    expect((await carol.get('/api/supabase/connectivity')).status).toBe(403);
+  });
 
   test('checkSupabaseConnectivity reports unconfigured status safely when no credentials present', async () => {
     process.env.SUPABASE_URL = '';
