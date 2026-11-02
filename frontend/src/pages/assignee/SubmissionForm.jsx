@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Upload, FileCheck, AlertCircle, X } from 'lucide-react';
 import { Spinner } from '../../components/Spinner';
+import { validateFile, validateSubmission } from '../../utils/validation';
 
 /**
  * SubmissionForm Component
@@ -42,10 +43,6 @@ export function SubmissionForm({
     }
   }, []);
 
-  // Allowed file extensions & max size (50MB)
-  const ALLOWED_EXTENSIONS = ['zip', 'pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'txt', 'tar', 'gz'];
-  const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-
   function handleFileChange(e) {
     const selectedFile = e.target.files?.[0] || null;
     setValidationErrors((prev) => ({ ...prev, file: undefined }));
@@ -55,22 +52,10 @@ export function SubmissionForm({
       return;
     }
 
-    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        file: `Invalid file format .${ext}. Allowed formats: ${ALLOWED_EXTENSIONS.join(', ')}`,
-      }));
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        file: `File size (${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB) exceeds 50 MB limit.`,
-      }));
+    // Extension, size and script-like-name checks (the server also verifies the file's real content).
+    const fileError = validateFile(selectedFile);
+    if (fileError) {
+      setValidationErrors((prev) => ({ ...prev, file: fileError }));
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
@@ -89,15 +74,7 @@ export function SubmissionForm({
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const errors = {};
-
-    if (!file) {
-      errors.file = 'Please attach a deliverable file to submit.';
-    }
-
-    if (isRevision && !description.trim()) {
-      errors.description = 'Please include a note explaining the revisions made.';
-    }
+    const errors = validateSubmission({ file, description, isRevision });
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
@@ -147,7 +124,7 @@ export function SubmissionForm({
               accept=".zip,.pdf,.jpg,.jpeg,.png,.doc,.docx,.txt,.tar,.gz"
             />
             <span className="text-2xs text-ink-muted mt-1 block">
-              Accepted formats: ZIP, PDF, PNG, JPG, DOCX, TXT (Max 50 MB)
+              Accepted formats: ZIP, PDF, PNG, JPG, DOCX, TXT (Max 25 MB)
             </span>
           </div>
         ) : (
@@ -185,6 +162,7 @@ export function SubmissionForm({
         <textarea
           id="submission-notes"
           ref={notesInputRef}
+          maxLength={1000}
           className="input w-full min-h-[75px] text-xs resize-y"
           placeholder={
             isRevision

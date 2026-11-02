@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Plus, FileText } from 'lucide-react';
 import { fetchProjectRequests, selectProjectRequests, selectProjectRequestsLoading } from '../../features/clients/projectRequestsSlice';
-import { selectCurrentUser } from '../../app/devIdentitySlice';
+import { selectCurrentUser } from '../../features/auth/authSlice';
 import { StatusBadge, PriorityBadge } from '../../components/StatusBadge';
 import { LoadingState } from '../../components/Spinner';
 import { formatDate } from '../../utils/format';

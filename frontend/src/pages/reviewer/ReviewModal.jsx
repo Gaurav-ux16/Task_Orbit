@@ -4,7 +4,8 @@ import { Alert, ErrorAlert } from '../../components/Alert';
 import { Spinner } from '../../components/Spinner';
 import { StatusBadge, PriorityBadge } from '../../components/StatusBadge';
 import { formatDate } from '../../utils/format';
-import { reviewsApi, submissionsApi } from '../../services/taskOrbitApi';
+import { reviewsApi, submissionsApi, tasksApi } from '../../services/taskOrbitApi';
+import { validateReview } from '../../utils/validation';
 import { CheckCircle2, RotateCcw, Download, Clock, FileText, AlertTriangle } from 'lucide-react';
 
 export function ReviewModal({ task, onClose }) {
@@ -17,6 +18,7 @@ export function ReviewModal({ task, onClose }) {
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
   const [staleError, setStaleError] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
   const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
@@ -72,8 +74,9 @@ export function ReviewModal({ task, onClose }) {
       setError('No submission found to review.');
       return;
     }
-    if (decision === 'revision' && !feedback.trim()) {
-      setError('Feedback is required when requesting revisions.');
+    const feedbackErrors = validateReview({ decision, feedback });
+    if (feedbackErrors.feedback) {
+      setFeedbackError(feedbackErrors.feedback);
       return;
     }
 
@@ -282,16 +285,19 @@ export function ReviewModal({ task, onClose }) {
             </div>
 
             <div>
-              <label className="label">
+              <label className="label" htmlFor="review-feedback">
                 Feedback & Notes {decision === 'revision' ? <span className="text-red-500">*</span> : <span className="text-ink-muted font-normal">(optional)</span>}
               </label>
               <textarea
+                id="review-feedback"
                 className="input w-full min-h-[90px] text-xs resize-y"
                 placeholder={decision === 'revision' ? 'Explain what changes are needed before this deliverable can be approved…' : 'Add approval remarks or sign-off notes…'}
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                required={decision === 'revision'}
+                onChange={(e) => { setFeedback(e.target.value); setFeedbackError(''); }}
+                maxLength={2000}
+                aria-invalid={Boolean(feedbackError)}
               />
+              {feedbackError && <p role="alert" className="text-xs text-red-600 mt-1">{feedbackError}</p>}
             </div>
           </form>
         )}

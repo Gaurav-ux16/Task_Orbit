@@ -6,6 +6,7 @@ import { ErrorAlert } from '../../components/Alert';
 import { Modal } from '../../components/Modal';
 import { formatDate } from '../../utils/format';
 import { NewTaskModal } from './NewTaskModal';
+import { AddMemberModal } from './AddMemberModal';
 import {
   Users, Search, Filter, CheckCircle2, Clock, Calendar,
   Briefcase, Plus, AlertTriangle, Layers, Star, ExternalLink
@@ -20,6 +21,7 @@ export function WorkerDirectoryPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [assigningWorker, setAssigningWorker] = useState(null);
+  const [addingMember, setAddingMember] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -68,6 +70,9 @@ export function WorkerDirectoryPage() {
             Manage developer workload, inspect skills, and assign project tasks with deadline-conflict protection
           </p>
         </div>
+        <button className="btn-primary btn" onClick={() => setAddingMember(true)}>
+          <Plus size={14} /> Add team member
+        </button>
       </div>
 
       <div className="page-body space-y-6">
@@ -322,11 +327,21 @@ export function WorkerDirectoryPage() {
         </Modal>
       )}
 
+      {addingMember && (
+        <AddMemberModal
+          onClose={() => setAddingMember(false)}
+          onCreated={() => {
+            setAddingMember(false);
+            loadData();
+          }}
+        />
+      )}
+
       {/* Assign New Task Modal */}
       {assigningWorker && (
         <NewTaskModal
-          projectId={projects[0]?.id}
-          editTask={{
+          projects={projects}
+          defaults={{
             assignee_id: assigningWorker.id,
             start_date: new Date().toISOString().slice(0, 10),
             due_date: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),

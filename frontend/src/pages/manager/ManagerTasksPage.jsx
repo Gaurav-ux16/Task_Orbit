@@ -6,6 +6,7 @@ import { LoadingState } from '../../components/Spinner';
 import { formatDate, isOverdue } from '../../utils/format';
 import { ErrorAlert } from '../../components/Alert';
 import { NewTaskModal } from './NewTaskModal';
+import { projectsApi } from '../../services/taskOrbitApi';
 import { Plus, Filter } from 'lucide-react';
 
 const STATUSES = ['', 'todo', 'in_progress', 'submitted', 'in_review', 'revision', 'approved'];
@@ -19,6 +20,11 @@ export function ManagerTasksPage() {
   const [filterPriority, setFilterPriority] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [editTask, setEditTask] = useState(null);
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    projectsApi.list({ limit: 100 }).then((r) => setProjects(r.data.data || [])).catch(() => setProjects([]));
+  }, []);
 
   useEffect(() => {
     const params = {};
@@ -94,7 +100,7 @@ export function ManagerTasksPage() {
         )}
       </div>
 
-      {showNew && <NewTaskModal projectId={null} onClose={() => { setShowNew(false); dispatch(fetchTasks({})); }} />}
+      {showNew && <NewTaskModal projects={projects} onClose={() => { setShowNew(false); dispatch(fetchTasks({})); }} />}
       {editTask && <NewTaskModal projectId={editTask.project_id} editTask={editTask} onClose={() => { setEditTask(null); dispatch(fetchTasks({})); }} />}
     </>
   );

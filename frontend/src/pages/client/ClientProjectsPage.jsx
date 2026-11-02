@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { FolderKanban, CheckCircle2, Clock, Calendar, ArrowRight } from 'lucide-react';
 import { projectsApi } from '../../services/taskOrbitApi';
-import { selectCurrentUser } from '../../app/devIdentitySlice';
+import { selectCurrentUser } from '../../features/auth/authSlice';
 import { StatusBadge } from '../../components/StatusBadge';
 import { LoadingState } from '../../components/Spinner';
 import { formatDate } from '../../utils/format';

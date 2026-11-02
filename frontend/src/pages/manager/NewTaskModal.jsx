@@ -1,43 +1,61 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../../components/Modal';
-import { Alert, ErrorAlert } from '../../components/Alert';
+import { ErrorAlert } from '../../components/Alert';
+import { FormField } from '../../components/FormField';
 import { Spinner } from '../../components/Spinner';
 import { tasksApi, profilesApi } from '../../services/taskOrbitApi';
 import { formatDate } from '../../utils/format';
+import { validateTask } from '../../utils/validation';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 
-export function NewTaskModal({ projectId, onClose, editTask = null }) {
+/**
+ * Create or edit a task.
+ *  - editTask: an existing task (must have an id) => PATCH
+ *  - defaults: pre-filled values for a NEW task (e.g. assignee chosen in the worker directory)
+ *  - projects: when no projectId is given, lets the manager pick the target project
+ */
+export function NewTaskModal({ projectId: fixedProjectId, projects = [], onClose, editTask = null, defaults = {} }) {
+  const initial = editTask || defaults;
+  const [projectId, setProjectId] = useState(fixedProjectId || projects[0]?.id || '');
   const [form, setForm] = useState({
-    title: editTask?.title || '',
-    description: editTask?.description || '',
-    assignee_id: editTask?.assignee_id || '',
-    priority: editTask?.priority || 'medium',
-    start_date: editTask?.start_date || '',
-    due_date: editTask?.due_date || '',
+    title: initial.title || '',
+    description: initial.description || '',
+    assignee_id: initial.assignee_id || '',
+    priority: initial.priority || 'medium',
+    start_date: initial.start_date || '',
+    due_date: initial.due_date || '',
   });
   const [profiles, setProfiles] = useState([]);
   const [conflicts, setConflicts] = useState(null);
   const [conflictLoading, setConflictLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
 
   useEffect(() => {
-    profilesApi.list({ role: 'assignee' }).then((r) => setProfiles(r.data.data || []));
+    profilesApi.list({ role: 'assignee' })
+      .then((r) => setProfiles(r.data.data || []))
+      .catch((err) => setError(err.friendlyMessage || 'Could not load assignees'));
   }, []);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined, range: undefined }));
     setConflicts(null);
     setOverrideConfirmed(false);
   }
 
   async function checkConflicts() {
     if (!form.assignee_id || !form.start_date || !form.due_date) return;
+    const found = validateTask({ ...form, title: form.title || 'placeholder' });
+    if (found.start_date || found.due_date || found.range) {
+      setErrors(found);
+      return;
+    }
     setConflictLoading(true);
     try {
-      const taskId = editTask?.id || 'new';
-      const res = await tasksApi.previewConflicts(taskId, {
+      const res = await tasksApi.previewConflicts(editTask?.id || 'new', {
         assignee_id: form.assignee_id,
         start_date: form.start_date,
         due_date: form.due_date,
@@ -52,25 +70,45 @@ export function NewTaskModal({ projectId, onClose, editTask = null }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.title) return setError('Title is required');
-    if (!form.start_date || !form.due_date) return setError('Start and due dates are required');
-    if (new Date(form.start_date) > new Date(form.due_date)) return setError('Start date must be before due date');
+    const found = validateTask(form);
+    setErrors(found);
+    if (Object.keys(found).length) return;
 
-    // If conflicts exist and not yet overridden, block
     if (conflicts?.hasConflicts && !overrideConfirmed) {
       return setError('Please acknowledge the scheduling conflict before saving.');
     }
 
+    if (!editTask?.id && !projectId) {
+      setErrors((prev) => ({ ...prev, project: 'Choose a project' }));
+      return;
+    }
+
     setSaving(true); setError('');
     try {
-      if (editTask) {
-        await tasksApi.update(editTask.id, { ...form, override_conflicts: overrideConfirmed });
+      const payload = {
+        title: form.title,
+        description: form.description,
+        priority: form.priority,
+        start_date: form.start_date,
+        due_date: form.due_date,
+        ...(form.assignee_id ? { assignee_id: form.assignee_id } : {}),
+        override_conflicts: overrideConfirmed,
+      };
+      if (editTask?.id) {
+        await tasksApi.update(editTask.id, payload);
       } else {
-        await tasksApi.create({ ...form, project_id: projectId, override_conflicts: overrideConfirmed });
+        await tasksApi.create({ ...payload, project_id: projectId });
       }
       onClose();
     } catch (err) {
-      setError(err.friendlyMessage || 'Failed to save task');
+      const data = err.response?.data;
+      if (err.response?.status === 409 && data?.hasConflicts) {
+        // The server found a conflict the preview had not shown yet: surface it for confirmation.
+        setConflicts({ hasConflicts: true, conflicts: data.conflicts });
+        setError('Scheduling conflict detected. Review it below and confirm to continue.');
+      } else {
+        setError(err.friendlyMessage || 'Failed to save task');
+      }
     } finally {
       setSaving(false);
     }
@@ -78,79 +116,80 @@ export function NewTaskModal({ projectId, onClose, editTask = null }) {
 
   return (
     <Modal
-      title={editTask ? 'Edit Task' : 'New Task'}
+      title={editTask?.id ? 'Edit Task' : 'New Task'}
       onClose={onClose}
       footer={
         <>
-          <button className="btn-secondary btn" onClick={onClose}>Cancel</button>
-          <button className="btn-primary btn" onClick={handleSubmit} disabled={saving}>
+          <button type="button" className="btn-secondary btn" onClick={onClose}>Cancel</button>
+          <button type="submit" form="task-form" className="btn-primary btn" disabled={saving}>
             {saving && <Spinner size={14} />}
-            {editTask ? 'Save Changes' : 'Create Task'}
+            {editTask?.id ? 'Save Changes' : 'Create Task'}
           </button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="task-form" onSubmit={handleSubmit} noValidate className="space-y-4">
         <ErrorAlert message={error} />
+        {errors.range && <ErrorAlert message={errors.range} />}
 
-        <div className="form-group">
-          <label className="form-label">Title *</label>
-          <input className="form-input" value={form.title} onChange={(e) => set('title', e.target.value)} required />
-        </div>
+        {!fixedProjectId && !editTask?.id && (
+          <FormField id="task-project" label="Project" error={errors.project} required>
+            <select id="task-project" className="form-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">— Select —</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select>
+          </FormField>
+        )}
 
-        <div className="form-group">
-          <label className="form-label">Description</label>
-          <textarea className="form-input" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
-        </div>
+        <FormField id="task-title" label="Title" error={errors.title} required>
+          <input id="task-title" className={`form-input ${errors.title ? 'form-input-error' : ''}`} value={form.title}
+            maxLength={120} onChange={(e) => set('title', e.target.value)} />
+        </FormField>
+
+        <FormField id="task-desc" label="Description" error={errors.description}>
+          <textarea id="task-desc" className={`form-input ${errors.description ? 'form-input-error' : ''}`} rows={3}
+            maxLength={2000} value={form.description} onChange={(e) => set('description', e.target.value)} />
+        </FormField>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="form-group">
-            <label className="form-label">Priority</label>
-            <select className="form-input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
+          <FormField id="task-priority" label="Priority" error={errors.priority}>
+            <select id="task-priority" className="form-input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
               <option value="critical">Critical</option>
             </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Assignee</label>
-            <select className="form-input" value={form.assignee_id} onChange={(e) => set('assignee_id', e.target.value)}>
+          </FormField>
+          <FormField id="task-assignee" label="Assignee">
+            <select id="task-assignee" className="form-input" value={form.assignee_id} onChange={(e) => set('assignee_id', e.target.value)}>
               <option value="">— Unassigned —</option>
               {profiles.map((p) => <option key={p.id} value={p.id}>{p.display_name}</option>)}
             </select>
-          </div>
+          </FormField>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="form-group">
-            <label className="form-label">Start Date *</label>
-            <input type="date" className="form-input" value={form.start_date} onChange={(e) => set('start_date', e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Due Date *</label>
-            <input type="date" className="form-input" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} required />
-          </div>
+          <FormField id="task-start" label="Start Date" error={errors.start_date} required>
+            <input id="task-start" type="date" className={`form-input ${errors.start_date ? 'form-input-error' : ''}`}
+              value={form.start_date} onChange={(e) => set('start_date', e.target.value)} />
+          </FormField>
+          <FormField id="task-due" label="Due Date" error={errors.due_date} required>
+            <input id="task-due" type="date" className={`form-input ${errors.due_date ? 'form-input-error' : ''}`}
+              value={form.due_date} onChange={(e) => set('due_date', e.target.value)} />
+          </FormField>
         </div>
 
-        {/* Conflict preview trigger */}
         {form.assignee_id && form.start_date && form.due_date && (
           <div>
-            <button
-              type="button"
-              className="btn-secondary btn btn-sm"
-              onClick={checkConflicts}
-              disabled={conflictLoading}
-            >
+            <button type="button" className="btn-secondary btn btn-sm" onClick={checkConflicts} disabled={conflictLoading}>
               {conflictLoading && <Spinner size={12} />}
               Check Schedule Conflicts
             </button>
           </div>
         )}
 
-        {/* Conflict results */}
         {conflicts && (
-          <div className="conflict-banner">
+          <div className="conflict-banner" data-testid="conflict-banner">
             <div className="flex items-center gap-2 mb-2">
               {conflicts.hasConflicts ? (
                 <AlertTriangle size={16} className="text-amber-600" />
@@ -168,12 +207,7 @@ export function NewTaskModal({ projectId, onClose, editTask = null }) {
               <>
                 <table className="data-table text-xs mb-3">
                   <thead>
-                    <tr>
-                      <th>Task</th>
-                      <th>Start</th>
-                      <th>Due</th>
-                      <th>Status</th>
-                    </tr>
+                    <tr><th>Task</th><th>Start</th><th>Due</th><th>Status</th></tr>
                   </thead>
                   <tbody>
                     {conflicts.conflicts.map((c) => (
@@ -188,12 +222,7 @@ export function NewTaskModal({ projectId, onClose, editTask = null }) {
                 </table>
 
                 <label className="flex items-center gap-2 text-xs text-amber-800 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={overrideConfirmed}
-                    onChange={(e) => setOverrideConfirmed(e.target.checked)}
-                    className="accent-amber-600"
-                  />
+                  <input type="checkbox" checked={overrideConfirmed} onChange={(e) => setOverrideConfirmed(e.target.checked)} className="accent-amber-600" />
                   I acknowledge the conflict and want to proceed anyway
                 </label>
               </>

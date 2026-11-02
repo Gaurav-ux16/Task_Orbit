@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { CheckSquare, Filter, Layers, Search, PlayCircle } from 'lucide-react';
-import { selectCurrentUser } from '../../app/devIdentitySlice';
+import { selectCurrentUser } from '../../features/auth/authSlice';
 import {
   fetchAssigneeTasks,
   startTask,

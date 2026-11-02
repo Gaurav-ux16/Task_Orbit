@@ -1,8 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider, useSelector } from 'react-redux';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { store } from './app/store';
-import { selectCurrentUser } from './app/devIdentitySlice';
+import { bootstrapSession, selectCurrentUser, selectAuthStatus } from './features/auth/authSlice';
 import { AppLayout } from './layouts/AppLayout';
+import { ProtectedRoute, PublicOnlyRoute, ROLE_HOME } from './components/ProtectedRoute';
+
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import { ForbiddenPage } from './pages/auth/ForbiddenPage';
 
 // Manager pages
 import { ManagerProjectsPage } from './pages/manager/ManagerProjectsPage';
@@ -25,43 +31,71 @@ import { ClientProjectDetailPage } from './pages/client/ClientProjectDetailPage'
 
 function RootRedirect() {
   const user = useSelector(selectCurrentUser);
-  if (user?.role === 'assignee') return <Navigate to="/assignee/tasks" replace />;
-  if (user?.role === 'reviewer') return <Navigate to="/reviewer/queue" replace />;
-  if (user?.role === 'client') return <Navigate to="/client/requests" replace />;
-  return <Navigate to="/manager/projects" replace />;
+  const status = useSelector(selectAuthStatus);
+  if (status !== 'ready') return null;
+  return <Navigate to={user ? ROLE_HOME[user.role] || '/login' : '/login'} replace />;
+}
+
+/** Authenticated shell: sidebar layout + nested pages. */
+function Shell() {
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </ProtectedRoute>
+  );
+}
+
+const only = (roles, element) => <ProtectedRoute roles={roles}>{element}</ProtectedRoute>;
+
+export function AppRoutes() {
+  const dispatch = useDispatch();
+
+  // Restore the session from the HttpOnly cookie on first load.
+  useEffect(() => {
+    dispatch(bootstrapSession());
+  }, [dispatch]);
+
+  return (
+    <Routes>
+      <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+      <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+
+      <Route element={<Shell />}>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
+
+        {/* Manager */}
+        <Route path="/manager/projects" element={only(['project_manager'], <ManagerProjectsPage />)} />
+        <Route path="/manager/projects/:id" element={only(['project_manager'], <ManagerProjectDetailPage />)} />
+        <Route path="/manager/tasks" element={only(['project_manager'], <ManagerTasksPage />)} />
+        <Route path="/manager/workers" element={only(['project_manager'], <WorkerDirectoryPage />)} />
+        <Route path="/manager/requests" element={only(['project_manager'], <ManagerRequestsPage />)} />
+
+        {/* Assignee */}
+        <Route path="/assignee/tasks" element={only(['assignee'], <AssigneeTasksPage />)} />
+        <Route path="/assignee/tasks/:id" element={only(['assignee'], <TaskDetails />)} />
+
+        {/* Reviewer */}
+        <Route path="/reviewer/queue" element={only(['reviewer'], <ReviewerQueuePage />)} />
+
+        {/* Client */}
+        <Route path="/client/requests" element={only(['client'], <ClientRequestsPage />)} />
+        <Route path="/client/projects" element={only(['client'], <ClientProjectsPage />)} />
+        <Route path="/client/projects/:id" element={only(['client'], <ClientProjectDetailPage />)} />
+
+        <Route path="*" element={<RootRedirect />} />
+      </Route>
+    </Routes>
+  );
 }
 
 export default function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<RootRedirect />} />
-
-            {/* Manager Routes */}
-            <Route path="/manager/projects" element={<ManagerProjectsPage />} />
-            <Route path="/manager/projects/:id" element={<ManagerProjectDetailPage />} />
-            <Route path="/manager/tasks" element={<ManagerTasksPage />} />
-            <Route path="/manager/workers" element={<WorkerDirectoryPage />} />
-            <Route path="/manager/requests" element={<ManagerRequestsPage />} />
-
-            {/* Assignee Routes */}
-            <Route path="/assignee/tasks" element={<AssigneeTasksPage />} />
-            <Route path="/assignee/tasks/:id" element={<TaskDetails />} />
-
-            {/* Reviewer Routes */}
-            <Route path="/reviewer/queue" element={<ReviewerQueuePage />} />
-
-            {/* Client Routes */}
-            <Route path="/client/requests" element={<ClientRequestsPage />} />
-            <Route path="/client/projects" element={<ClientProjectsPage />} />
-            <Route path="/client/projects/:id" element={<ClientProjectDetailPage />} />
-
-            {/* Fallback */}
-            <Route path="*" element={<RootRedirect />} />
-          </Routes>
-        </AppLayout>
+        <AppRoutes />
       </BrowserRouter>
     </Provider>
   );
