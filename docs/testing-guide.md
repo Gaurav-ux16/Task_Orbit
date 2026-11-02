@@ -2,6 +2,74 @@
 
 This guide provides end-to-end verification and testing procedures for the **TaskOrbit** collaborative project management system, covering both the core application workflow (aligned with the research paper) and the isolated academic demonstrations for **Units I, II, III, and IV** of the Web Technology syllabus.
 
+## 0. Verification matrix — control, unit, module, page & validation testing
+
+Run everything:
+
+```bash
+cd node-backend && npm test        # 9 suites / 342 tests  (Jest + Supertest, in-memory DB)
+cd frontend     && npm test        # 4 suites / 79 tests   (Vitest + Testing Library, jsdom)
+cd frontend     && npm run lint && npm run build
+```
+
+### 0.1 Levels of testing and where they live
+
+| Level | What is tested | Files |
+|---|---|---|
+| **Unit** | Injection detector (SQL / XSS / command / template / traversal / NoSQL / malware signature, 43 attack payloads, 11-sample benign-text false-positive guard), payload scanner (depth, size, prototype-pollution), file-name sanitiser, password policy + bcrypt, token helpers, upload inspector (magic bytes), date validator, state machine, conflict algorithm | `node-backend/tests/sanitize.test.js`, `taskWorkflow.test.js`, `conflictService.test.js`, `frontend/src/utils/validation.test.js` |
+| **Control (middleware / component control)** | `requireAuth`, `requireRole`, CSRF + Origin guard, `inputGuard`, rate limiter, security headers, CORS, error handler, session expiry, React `ProtectedRoute` / `PublicOnlyRoute`, Axios interceptors (cookie, CSRF header, 401 handling) | `security.test.js`, `auth.test.js`, `validation.test.js`, `frontend/src/services/api.test.js`, `frontend/src/pages/auth/auth.pages.test.jsx` |
+| **Module (integration)** | Auth lifecycle, RBAC matrix per endpoint, object-level access (IDOR), data hiding, full workflow (submit → review → approve), conflict override, uploads | `rbac.test.js`, `apiRoutes.test.js`, `auth.test.js`, `supabaseConfig.test.js` |
+| **Page / component** | Login, Register, role guards, New Request, New Task (conflict flow), Add Member, Submission form, Review modal | `frontend/src/pages/**/*.test.jsx` |
+| **Validation (textbox) testing** | Every writable endpoint × 10 attack payloads (sql ×3, xss ×3, command, template, traversal, NoSQL); every React form × 4 payloads; boundary / type / enum / date validation | `security.test.js`, `validation.test.js`, `frontend/src/pages/forms.test.jsx` |
+| **Browser smoke** (manual / scripted) | Real cookie flow across origins (`HttpOnly` not readable by JS, CSRF 403, injection 400), login → upload → review → approve | section 0.3 |
+
+### 0.2 Use cases (UC) → automated evidence
+
+| UC | Use case | Expected result | Evidence |
+|---|---|---|---|
+| UC-01 | Sign in with valid credentials | 200, `HttpOnly` + `SameSite` session cookie, CSRF token returned, no credential fields | `auth.test.js` |
+| UC-02 | Sign in with wrong password / unknown e-mail | Same generic 401 (no user enumeration), no cookie | `auth.test.js` |
+| UC-03 | 5 failed sign-ins | Account locked (423) even for the right password | `auth.test.js` |
+| UC-04 | Remember-me | Persistent cookie; not subject to idle timeout | `auth.test.js`, `validation.test.js` |
+| UC-05 | Idle / absolute timeout | Session invalid → 401 | `validation.test.js` (Session lifetime) |
+| UC-06 | Logout, replay old cookie | 401 — session destroyed server-side | `auth.test.js` |
+| UC-07 | Tampered / random cookie, forged `X-Dev-*` headers | 401 | `auth.test.js` |
+| UC-08 | Register as client; try to register as manager | Always `client`; password policy + unique e-mail enforced | `auth.test.js`, `auth.pages.test.jsx` |
+| UC-09 | Change password | Needs current password; other sessions revoked | `auth.test.js` |
+| UC-10 | Manager provisions assignee/reviewer | 201; non-managers 403 | `auth.test.js`, `rbac.test.js`, `forms.test.jsx` |
+| UC-11 | State-changing call without / with wrong CSRF token, foreign `Origin` | 403 | `security.test.js` |
+| UC-12 | SQL injection in any textbox (request, project, task, review, submission note, login, register, query string, path) | 400 **before** any write; nothing persisted | `security.test.js` |
+| UC-13 | XSS / HTML / `javascript:` payload in any textbox | 400; payload never echoed back | `security.test.js`, `forms.test.jsx` |
+| UC-14 | Command / template / path-traversal / NoSQL / prototype-pollution payloads | 400 | `sanitize.test.js`, `security.test.js` |
+| UC-15 | Upload `.exe`, spoofed `.pdf`, `shell.php.zip`, EICAR, empty, > 25 MB | 400 (413) | `security.test.js`, `sanitize.test.js` |
+| UC-16 | Role tries an endpoint outside its permissions (RBAC suite, 53 tests) | 403 | `rbac.test.js` |
+| UC-17 | Assignee reads/edits another assignee's task, deliverable, reviews | 403 | `rbac.test.js`, `apiRoutes.test.js` |
+| UC-18 | Client reads another client's project/request/task/activity | 403 / empty list | `rbac.test.js` |
+| UC-19 | Data hiding: credentials, e-mails, storage paths, internal activity, unapproved deliverables | Never exposed to unauthorised roles | `rbac.test.js` |
+| UC-20 | Illegal transition (`todo → approved`) | 409 | `apiRoutes.test.js`, `taskWorkflow.test.js` |
+| UC-21 | Unauthorised transition (assignee approves) | 403 | `apiRoutes.test.js` |
+| UC-22 | Stale review (older submission version) | 409 | `apiRoutes.test.js` |
+| UC-23 | Overlapping assignment without / with override | 409 / 201 + two-way references | `apiRoutes.test.js`, `conflictService.test.js`, `forms.test.jsx` |
+| UC-24 | Approved task is terminal (no edits, no transitions) | 409 | `apiRoutes.test.js` |
+| UC-25 | Unauthenticated visitor opens an internal page | Redirect to `/login`; after sign-in only the role's own pages open | `auth.pages.test.jsx` |
+| UC-26 | Logout / session expiry clears cached data in the SPA | No data leaks to the next user | `api.test.js` |
+| UC-27 | Production safety: demo DB / missing `FRONTEND_URL` | Server refuses to start | `validation.test.js` |
+
+### 0.3 Browser smoke script (in-app browser or Chrome)
+
+1. Start API + web app (see README). Open `http://localhost:5173` → redirected to **/login**.
+2. Wrong password for `carol@taskorbit.io` → red "Invalid e-mail or password"; correct password → **My Tasks**.
+3. Open a task, attach a small valid ZIP, add a note, **Submit for Review** → badge **Submitted**.
+4. Sign out → sign in as `eve@taskorbit.io` → **Review Queue** shows the task → **Begin Review**.
+5. Paste `'; DROP TABLE reviews; --` into *Feedback* → inline "disallowed content" error, nothing sent. Replace with normal text → **Approve** → queue count drops.
+6. In the browser console `document.cookie` does **not** list `to_sid` (HttpOnly). A manual `fetch(..., {method:'POST'})` without `X-CSRF-Token` returns **403**.
+7. Sign in as `bob@taskorbit.io` → *Worker Directory → Add team member* with a weak password → inline errors; with a strong one → account is created.
+
+### 0.4 Known limits (be explicit in a viva / report)
+* Pattern screening is **defence in depth**; the primary protections are parameterised queries (Supabase SDK) and React output escaping. Free text that happens to look like an attack (for example `select … from … where x = 1`) is deliberately rejected.
+* The suite runs against the embedded in-memory store; RLS policies and the live Supabase path are not exercised in CI.
+* No load, latency or concurrency benchmarks have been run.
+
 ---
 
 ## 1. Prerequisites Installation
@@ -20,6 +88,8 @@ Ensure the following runtimes and tools are installed:
 ---
 
 ## 2. Environment Configuration (`.env`)
+
+> See `node-backend/.env.example` for the complete, current list (session lifetimes, cookie policy, rate limits).
 
 ### Express Backend Configuration
 Location: `node-backend/.env`
@@ -117,17 +187,14 @@ Execute automated verification suites from the terminal:
 cd d:\wt_cp_task_orbit\node-backend
 npm test
 ```
-**Expected Outcome**: 56 passed tests across 4 test suites:
-- `tests/conflictService.test.js` (13 tests): Mathematical inclusive overlap interval rules, edge cases, start-after-deadline validation.
-- `tests/taskWorkflow.test.js` (25 tests): 6 permitted transitions, illegal transition rejections (409), unauthorized roles (403), terminal approval.
-- `tests/apiRoutes.test.js` (14 tests): Worker directory endpoint, pre-commit conflict rejection (409), confirmed override (201) with two-way linking, cross-assignee modification rejection (403), deliverable upload MIME filter (400), version incrementing (v1, v2), stale-review rejection (409).
-- `tests/supabaseConfig.test.js` (4 tests): Configuration detection, live non-destructive connectivity probe, status endpoint validation, and strict protection against secret key leakage.
+**Expected Outcome**: all suites green (342 tests, 9 suites) — see the matrix in section 0.
 
 ### B. Supabase Diagnostic Probing (Live Verification)
 Test the Express Supabase endpoints:
 ```powershell
 # 1. Inspect configuration status (safe, no secrets exposed)
-Invoke-RestMethod -Uri "http://localhost:3001/api/supabase/status" -Method GET | ConvertTo-Json
+# (requires a signed-in project-manager session — use Postman or the browser)
+Invoke-RestMethod -Uri "http://localhost:3001/api/health" -Method GET | ConvertTo-Json
 
 # 2. Live connectivity probe (safe non-destructive read)
 Invoke-RestMethod -Uri "http://localhost:3001/api/supabase/connectivity" -Method GET | ConvertTo-Json
@@ -143,6 +210,8 @@ npm run build
 ---
 
 ## 5. End-to-End Feature Verification: The 14-Step Main Workflow Test
+
+> **Authentication note:** wherever a step says "switch role", sign out (sidebar) and sign in as the matching demo account from the README. There is no identity switcher any more.
 
 Follow these exact steps to verify the entire research-paper collaborative workflow:
 

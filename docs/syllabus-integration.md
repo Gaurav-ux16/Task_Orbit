@@ -23,7 +23,7 @@ Isolated academic demonstration modules demonstrate syllabus concepts from **Uni
 │  - Assignee: Dashboard, TaskCard, TaskDetails, Submissions, Resume     │
 │  - Reviewer: Queue (submitted/in_review), Stale Rejection, Feedback    │
 │  - Client: Project Requests, Overview, Project-Level Acceptance        │
-│  - Axios HTTP Client with Identity Headers (X-Dev-User-Id, X-Dev-Role) │
+│  - Axios client: HttpOnly session cookie + X-CSRF-Token, login/route guards  │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ HTTP / JSON (Port 5173 -> 3001)
 ┌───────────────────────────────────▼────────────────────────────────────┐
