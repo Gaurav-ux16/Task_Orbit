@@ -10,7 +10,7 @@ export default [
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: { ...globals.browser, ...globals.node },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -29,6 +29,11 @@ export default [
       ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
       'react/jsx-no-target-blank': 'off',
+      // Plain-JS project: component contracts are covered by the Vitest suite instead of PropTypes.
+      'react/prop-types': 'off',
+      'react/no-unescaped-entities': 'off',
+      'no-control-regex': 'off', // the input-screening rules intentionally match control characters
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

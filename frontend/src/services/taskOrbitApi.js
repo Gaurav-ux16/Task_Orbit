@@ -54,3 +54,18 @@ export const workersApi = {
   list: () => api.get('/api/workers'),
 };
 
+
+// Authentication & session
+export const authApi = {
+  me: () => api.get('/api/auth/me'),
+  login: (data) => api.post('/api/auth/login', data),
+  register: (data) => api.post('/api/auth/register', data),
+  logout: () => api.post('/api/auth/logout'),
+  logoutAll: () => api.post('/api/auth/logout-all'),
+  changePassword: (data) => api.post('/api/auth/change-password', data),
+};
+
+// Account provisioning (project managers only)
+export const usersApi = {
+  create: (data) => api.post('/api/users', data),
+};
