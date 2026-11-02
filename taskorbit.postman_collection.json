@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "TaskOrbit API & Academic Demonstrations",
-    "description": "Comprehensive Postman API Collection for TaskOrbit (Express Backend, Workflow Transitions, Conflict Engine, Stale Review Rejection) and Unit IV Spring Boot Reporting Academic Demo.",
+    "description": "Comprehensive Postman API Collection for TaskOrbit (Express Backend, Workflow Transitions, Conflict Engine, Stale Review Rejection) and Unit IV Spring Boot Reporting Academic Demo.\n\nAUTH: every request after \"Auth / Login\" is authenticated by the HttpOnly session cookie (Postman keeps it in its cookie jar). Run one of the Login requests first. A collection-level pre-request script adds the X-CSRF-Token header (saved by the login test script) to every state-changing request.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -16,27 +16,300 @@
       "type": "string"
     },
     {
-      "key": "pmUserId",
-      "value": "manager-001",
+      "key": "csrfToken",
+      "value": "",
       "type": "string"
     },
     {
-      "key": "assigneeUserId",
-      "value": "assignee-001",
-      "type": "string"
-    },
-    {
-      "key": "reviewerUserId",
-      "value": "reviewer-001",
-      "type": "string"
-    },
-    {
-      "key": "clientUserId",
-      "value": "client-001",
+      "key": "demoPassword",
+      "value": "TaskOrbit@2026!",
       "type": "string"
     }
   ],
   "item": [
+    {
+      "name": "0. Auth & Security",
+      "item": [
+        {
+          "name": "Login — Project Manager (bob)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds and sets an HttpOnly session cookie', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly');",
+                  "});",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().data.csrfToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bob@taskorbit.io\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login — Assignee (carol)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds and sets an HttpOnly session cookie', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly');",
+                  "});",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().data.csrfToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carol@taskorbit.io\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login — Reviewer (eve)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds and sets an HttpOnly session cookie', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly');",
+                  "});",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().data.csrfToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"eve@taskorbit.io\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login — Client (alice)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds and sets an HttpOnly session cookie', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Set-Cookie')).to.include('HttpOnly');",
+                  "});",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().data.csrfToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@clientcorp.io\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Who am I (GET /api/auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Attack: SQL injection in task title (expects 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('hostile input rejected with 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"22222222-0000-0000-0000-000000000001\",\n  \"title\": \"x'; DROP TABLE tasks;--\",\n  \"priority\": \"low\",\n  \"start_date\": \"2027-01-01\",\n  \"due_date\": \"2027-01-02\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Attack: stored XSS in project title (expects 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('hostile input rejected with 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"<script>alert(1)</script>\",\n  \"client_id\": \"client-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "1. Main Express API (Authoritative Workflow)",
       "item": [
@@ -47,8 +320,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           }
         },
@@ -59,14 +336,16 @@
               "name": "List Workers Directory",
               "request": {
                 "method": "GET",
-                "header": [
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/workers",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "workers"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "workers"
+                  ]
                 }
               }
             },
@@ -77,8 +356,13 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/profiles",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "profiles"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profiles"
+                  ]
                 }
               }
             }
@@ -91,14 +375,16 @@
               "name": "List Projects",
               "request": {
                 "method": "GET",
-                "header": [
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/projects",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "projects"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "projects"
+                  ]
                 }
               }
             },
@@ -109,8 +395,14 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/projects/22222222-0000-0000-0000-000000000001",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "projects", "22222222-0000-0000-0000-000000000001"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "projects",
+                    "22222222-0000-0000-0000-000000000001"
+                  ]
                 }
               }
             },
@@ -119,9 +411,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -129,8 +422,13 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/projects",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "projects"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "projects"
+                  ]
                 }
               }
             }
@@ -146,8 +444,13 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks"
+                  ]
                 }
               }
             },
@@ -158,8 +461,14 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000001",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000001"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "33333333-0000-0000-0000-000000000001"
+                  ]
                 }
               }
             },
@@ -168,9 +477,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -178,8 +488,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/new/conflict-preview",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "new", "conflict-preview"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "new",
+                    "conflict-preview"
+                  ]
                 }
               }
             },
@@ -188,9 +505,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -198,8 +516,13 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks"
+                  ]
                 }
               }
             },
@@ -208,9 +531,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -218,8 +542,13 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks"
+                  ]
                 }
               }
             }
@@ -233,9 +562,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{assigneeUserId}}" },
-                  { "key": "X-Dev-Role", "value": "assignee" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -243,8 +573,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000006/status",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000006", "status"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "33333333-0000-0000-0000-000000000006",
+                    "status"
+                  ]
                 }
               }
             },
@@ -253,9 +590,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
-                  { "key": "X-Dev-Role", "value": "reviewer" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -263,8 +601,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000002/status",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000002", "status"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "33333333-0000-0000-0000-000000000002",
+                    "status"
+                  ]
                 }
               }
             },
@@ -273,9 +618,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{assigneeUserId}}" },
-                  { "key": "X-Dev-Role", "value": "assignee" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -283,8 +629,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000006/status",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000006", "status"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "33333333-0000-0000-0000-000000000006",
+                    "status"
+                  ]
                 }
               }
             },
@@ -293,9 +646,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
-                  { "key": "X-Dev-Role", "value": "reviewer" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -303,8 +657,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000006/status",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000006", "status"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "33333333-0000-0000-0000-000000000006",
+                    "status"
+                  ]
                 }
               }
             }
@@ -318,9 +679,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "application/json": "true" },
-                  { "key": "X-Dev-User-Id", "value": "{{assigneeUserId}}" },
-                  { "key": "X-Dev-Role", "value": "assignee" }
+                  {
+                    "key": "Content-Type",
+                    "application/json": "true"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -328,8 +690,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/tasks/33333333-0000-0000-0000-000000000001/submissions",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "tasks", "33333333-0000-0000-0000-000000000001", "submissions"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "tasks",
+                    "33333333-0000-0000-0000-000000000001",
+                    "submissions"
+                  ]
                 }
               }
             },
@@ -337,14 +706,17 @@
               "name": "Get Pending Reviews Queue",
               "request": {
                 "method": "GET",
-                "header": [
-                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
-                  { "key": "X-Dev-Role", "value": "reviewer" }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/reviews/pending",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "reviews", "pending"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "reviews",
+                    "pending"
+                  ]
                 }
               }
             },
@@ -353,9 +725,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
-                  { "key": "X-Dev-Role", "value": "reviewer" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -363,8 +736,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/submissions/44444444-0000-0000-0000-000000000001/reviews",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "submissions", "44444444-0000-0000-0000-000000000001", "reviews"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "submissions",
+                    "44444444-0000-0000-0000-000000000001",
+                    "reviews"
+                  ]
                 }
               }
             },
@@ -373,9 +753,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{reviewerUserId}}" },
-                  { "key": "X-Dev-Role", "value": "reviewer" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -383,8 +764,15 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/submissions/44444444-0000-0000-0000-000000000004/reviews",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "submissions", "44444444-0000-0000-0000-000000000004", "reviews"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "submissions",
+                    "44444444-0000-0000-0000-000000000004",
+                    "reviews"
+                  ]
                 }
               }
             }
@@ -397,14 +785,16 @@
               "name": "List Client Project Requests",
               "request": {
                 "method": "GET",
-                "header": [
-                  { "key": "X-Dev-User-Id", "value": "{{clientUserId}}" },
-                  { "key": "X-Dev-Role", "value": "client" }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/project-requests",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "project-requests"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "project-requests"
+                  ]
                 }
               }
             },
@@ -413,9 +803,10 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "X-Dev-User-Id", "value": "{{clientUserId}}" },
-                  { "key": "X-Dev-Role", "value": "client" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
@@ -423,8 +814,13 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/project-requests",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "project-requests"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "project-requests"
+                  ]
                 }
               }
             },
@@ -432,14 +828,16 @@
               "name": "Inspect Activity Log",
               "request": {
                 "method": "GET",
-                "header": [
-                  { "key": "X-Dev-User-Id", "value": "{{pmUserId}}" },
-                  { "key": "X-Dev-Role", "value": "project_manager" }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/activity",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "activity"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "activity"
+                  ]
                 }
               }
             }
@@ -457,8 +855,13 @@
             "header": [],
             "url": {
               "raw": "{{springBootUrl}}/actuator/health",
-              "host": ["{{springBootUrl}}"],
-              "path": ["actuator", "health"]
+              "host": [
+                "{{springBootUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
             }
           }
         },
@@ -469,8 +872,14 @@
             "header": [],
             "url": {
               "raw": "{{springBootUrl}}/api/reports/public",
-              "host": ["{{springBootUrl}}"],
-              "path": ["api", "reports", "public"]
+              "host": [
+                "{{springBootUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "public"
+              ]
             }
           }
         },
@@ -481,8 +890,14 @@
             "header": [],
             "url": {
               "raw": "{{springBootUrl}}/api/reports/projects",
-              "host": ["{{springBootUrl}}"],
-              "path": ["api", "reports", "projects"]
+              "host": [
+                "{{springBootUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "projects"
+              ]
             }
           }
         },
@@ -492,16 +907,30 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "manager", "type": "string" },
-                { "key": "password", "value": "manager123", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "manager",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "manager123",
+                  "type": "string"
+                }
               ]
             },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{springBootUrl}}/api/reports/projects",
-              "host": ["{{springBootUrl}}"],
-              "path": ["api", "reports", "projects"]
+              "host": [
+                "{{springBootUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "projects"
+              ]
             }
           }
         },
@@ -511,16 +940,30 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "manager", "type": "string" },
-                { "key": "password", "value": "manager123", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "manager",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "manager123",
+                  "type": "string"
+                }
               ]
             },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{springBootUrl}}/api/reports/workers",
-              "host": ["{{springBootUrl}}"],
-              "path": ["api", "reports", "workers"]
+              "host": [
+                "{{springBootUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "workers"
+              ]
             }
           }
         },
@@ -530,20 +973,47 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "manager", "type": "string" },
-                { "key": "password", "value": "manager123", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "manager",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "manager123",
+                  "type": "string"
+                }
               ]
             },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{springBootUrl}}/api/reports/conflicts",
-              "host": ["{{springBootUrl}}"],
-              "path": ["api", "reports", "conflicts"]
+              "host": [
+                "{{springBootUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "conflicts"
+              ]
             }
           }
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const unsafe = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(pm.request.method);",
+          "const token = pm.collectionVariables.get('csrfToken');",
+          "if (unsafe && token) { pm.request.headers.upsert({ key: 'X-CSRF-Token', value: token }); }"
+        ]
+      }
     }
   ]
 }

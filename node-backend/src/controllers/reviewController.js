@@ -1,5 +1,6 @@
 import supabase from '../config/supabase.js';
 import { applyStatusTransition } from '../services/taskWorkflowService.js';
+import { requireTaskAccess } from '../services/accessService.js';
 
 export async function getPendingReviews(req, res, next) {
   try {
@@ -13,19 +14,16 @@ export async function getPendingReviews(req, res, next) {
       `)
       .in('status', ['submitted', 'in_review'])
       .order('updated_at', { ascending: true });
-
     if (error) throw error;
 
-    // For each task, fetch the latest submission
     const result = await Promise.all(
       tasks.map(async (task) => {
         const { data: submissions } = await supabase
           .from('submissions')
-          .select('*')
+          .select('id, task_id, version_number, file_name, description, created_at, submitted_by')
           .eq('task_id', task.id)
           .order('version_number', { ascending: false })
           .limit(1);
-
         return { ...task, latest_submission: submissions?.[0] || null };
       })
     );
@@ -41,38 +39,30 @@ export async function createReview(req, res, next) {
     const { submissionId } = req.params;
     const { decision, feedback, task_id } = req.body;
 
-    if (!['approved', 'revision'].includes(decision)) {
-      return res.status(400).json({ success: false, error: "Decision must be 'approved' or 'revision'" });
-    }
     if (decision === 'revision' && !feedback) {
       return res.status(400).json({ success: false, error: 'Feedback is required when requesting revisions' });
     }
 
-    // Fetch the submission to verify it's the latest version
     const { data: submission, error: subErr } = await supabase
       .from('submissions')
       .select('id, task_id, version_number')
       .eq('id', submissionId)
-      .single();
+      .maybeSingle();
+    if (subErr) throw subErr;
+    if (!submission) return res.status(404).json({ success: false, error: 'Submission not found' });
 
-    if (subErr || !submission) {
-      return res.status(404).json({ success: false, error: 'Submission not found' });
+    if (task_id && task_id !== submission.task_id) {
+      return res.status(400).json({ success: false, error: 'task_id does not match the submission' });
     }
+    const effectiveTaskId = submission.task_id;
 
-    const effectiveTaskId = task_id || submission.task_id;
-
-    // Verify task workflow state
-    const { data: task, error: taskErr } = await supabase
+    const { data: task } = await supabase
       .from('tasks')
       .select('id, status, latest_submission_id, latest_version_number')
       .eq('id', effectiveTaskId)
-      .single();
+      .maybeSingle();
+    if (!task) return res.status(404).json({ success: false, error: 'Associated task not found' });
 
-    if (taskErr || !task) {
-      return res.status(404).json({ success: false, error: 'Associated task not found' });
-    }
-
-    // Get the actual latest version for this task
     const { data: latestSubs } = await supabase
       .from('submissions')
       .select('version_number, id')
@@ -83,7 +73,7 @@ export async function createReview(req, res, next) {
     const latestVersion = latestSubs?.[0]?.version_number;
     const latestSubId = latestSubs?.[0]?.id || task.latest_submission_id;
 
-    // Stale review protection — HTTP 409 if not latest version or id
+    // Stale review protection — HTTP 409 if not latest version or id (property P4)
     if (submission.version_number !== latestVersion || (latestSubId && submission.id !== latestSubId)) {
       return res.status(409).json({
         success: false,
@@ -92,7 +82,6 @@ export async function createReview(req, res, next) {
       });
     }
 
-    // Must be in 'in_review' to record an approval or revision decision
     if (task.status !== 'in_review') {
       return res.status(409).json({
         success: false,
@@ -100,7 +89,6 @@ export async function createReview(req, res, next) {
       });
     }
 
-    // Create the review record
     const { data: review, error: reviewErr } = await supabase
       .from('reviews')
       .insert({
@@ -112,14 +100,9 @@ export async function createReview(req, res, next) {
       })
       .select()
       .single();
-
     if (reviewErr) throw reviewErr;
 
-    // Apply status transition with full actor identity
-    await applyStatusTransition(effectiveTaskId, decision, req.user, {
-      review_id: review.id,
-      feedback,
-    });
+    await applyStatusTransition(effectiveTaskId, decision, req.user, { review_id: review.id, feedback });
 
     res.status(201).json({ success: true, data: review });
   } catch (err) {
@@ -129,6 +112,7 @@ export async function createReview(req, res, next) {
 
 export async function getTaskReviews(req, res, next) {
   try {
+    const task = await requireTaskAccess(req.user, req.params.taskId);
     const { data, error } = await supabase
       .from('reviews')
       .select(`
@@ -136,7 +120,7 @@ export async function getTaskReviews(req, res, next) {
         reviewer:profiles!reviews_reviewer_id_fkey(id, display_name),
         submission:submissions(version_number, file_name)
       `)
-      .eq('task_id', req.params.taskId)
+      .eq('task_id', task.id)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

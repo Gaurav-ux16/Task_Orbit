@@ -69,29 +69,30 @@ export function validateTransition(task, nextStatus, actor = {}) {
   const transitionKey = `${task.status}->${nextStatus}`;
   const rule = TRANSITION_AUTHORIZATION[transitionKey];
 
-  if (rule && actor.role) {
-    if (!rule.roles.includes(actor.role)) {
-      throw Object.assign(
-        new Error(
-          `Access denied: Role '${actor.role}' is not authorized to transition task from '${task.status}' to '${nextStatus}'. ` +
-          `Authorized roles: [${rule.roles.join(', ')}].`
-        ),
-        { status: 403 }
-      );
-    }
+  if (!rule || !actor.role) {
+    throw Object.assign(
+      new Error('Access denied: a signed-in user with a role is required for this transition.'),
+      { status: 403 }
+    );
+  }
 
-    // 3. Ownership validation (Section III-G & Section IV-A)
-    // An assignee may only modify or transition tasks assigned directly to them.
-    if (rule.requiresOwnership && actor.role === 'assignee') {
-      if (task.assignee_id && task.assignee_id !== actor.id) {
-        throw Object.assign(
-          new Error(
-            `Access denied: You cannot transition task '${task.id}' because it is assigned to '${task.assignee_id}', not '${actor.id}'.`
-          ),
-          { status: 403 }
-        );
-      }
-    }
+  if (!rule.roles.includes(actor.role)) {
+    throw Object.assign(
+      new Error(
+        `Access denied: Role '${actor.role}' is not authorized to transition task from '${task.status}' to '${nextStatus}'. ` +
+        `Authorized roles: [${rule.roles.join(', ')}].`
+      ),
+      { status: 403 }
+    );
+  }
+
+  // 3. Ownership validation (Section III-G & Section IV-A)
+  // An assignee may only modify or transition tasks assigned directly to them.
+  if (rule.requiresOwnership && actor.role === 'assignee' && task.assignee_id !== actor.id) {
+    throw Object.assign(
+      new Error('Access denied: You cannot transition a task that is not assigned to you.'),
+      { status: 403 }
+    );
   }
 }
 

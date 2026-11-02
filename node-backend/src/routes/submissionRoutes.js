@@ -1,71 +1,59 @@
 import { Router } from 'express';
 import multer from 'multer';
-import {
-  listSubmissions,
-  createTaskSubmission,
-  downloadSubmission,
-} from '../controllers/submissionController.js';
+import { validateRequest } from '../middleware/validateRequest.js';
+import { requireRole } from '../middleware/auth.js';
+import { inputGuard } from '../middleware/inputGuard.js';
+import { uploadLimiter } from '../middleware/rateLimit.js';
+import { uuidParam, optionalText } from '../validation/rules.js';
+import { ALLOWED_EXTENSIONS } from '../utils/fileGuard.js';
+import { listSubmissions, createTaskSubmission, downloadSubmission } from '../controllers/submissionController.js';
 
 const router = Router({ mergeParams: true });
 
-// Memory storage for forwarding deliverable buffer to Supabase Storage
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+// Memory storage: the buffer is inspected (magic bytes) before being forwarded to storage.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 5, fieldSize: 10_000, parts: 8 },
   fileFilter: (req, file, cb) => {
-    const allowedMimes = [
-      'application/zip',
-      'application/x-zip-compressed',
-      'multipart/x-zip',
-      'application/pdf',
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-      'application/octet-stream',
-    ];
-    const allowedExts = ['.zip', '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.doc', '.docx', '.txt', '.tar', '.gz'];
-    const hasAllowedExt = allowedExts.some((ext) => file.originalname.toLowerCase().endsWith(ext));
-
-    if (allowedMimes.includes(file.mimetype) || hasAllowedExt) {
-      cb(null, true);
-    } else {
-      cb(new Error('File type not permitted. Allowed formats: ZIP, PDF, images, Word documents, text files.'));
-    }
+    const lower = String(file.originalname || '').toLowerCase();
+    if (ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext))) return cb(null, true);
+    return cb(new Error(`File type not permitted. Allowed formats: ${ALLOWED_EXTENSIONS.join(', ')}.`));
   },
 });
 
-// Middleware wrapping multer to guarantee clean HTTP 400 JSON errors on upload violations
+// Wraps multer so every upload violation is a clean JSON 400.
 const uploadMiddleware = (req, res, next) => {
   upload.single('file')(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({
-          success: false,
-          error: 'File size exceeds maximum permitted limit (50 MB).',
-        });
+        return res.status(400).json({ success: false, error: `File size exceeds maximum permitted limit (${MAX_UPLOAD_BYTES / 1024 / 1024} MB).` });
       }
       return res.status(400).json({ success: false, error: `Upload error: ${err.message}` });
-    } else if (err) {
-      return res.status(400).json({ success: false, error: err.message });
     }
+    if (err) return res.status(400).json({ success: false, error: err.message });
     next();
   });
 };
 
-// GET /api/tasks/:taskId/submissions
-router.get('/', listSubmissions);
+router.get('/', [uuidParam('taskId'), validateRequest], listSubmissions);
 
-// POST /api/tasks/:taskId/submissions
-router.post('/', uploadMiddleware, createTaskSubmission);
+router.post(
+  '/',
+  requireRole('assignee'),
+  uploadLimiter(),
+  uploadMiddleware,
+  inputGuard, // multipart text fields only exist after multer ran
+  [uuidParam('taskId'), optionalText('description', { max: 1000 }), validateRequest],
+  createTaskSubmission
+);
 
 export default router;
 
-// Standalone submission download route
+// Standalone submission download route: GET /api/submissions/:id/download
 export function submissionDownloadRouter() {
   const r = Router();
-  r.get('/:id/download', downloadSubmission);
+  r.get('/:id/download', [uuidParam('id'), validateRequest], downloadSubmission);
   return r;
 }

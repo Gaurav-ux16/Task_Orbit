@@ -1,6 +1,10 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest.js';
+import { requireRole } from '../middleware/auth.js';
+import {
+  text, optionalText, enumField, dateField, uuidParam, pagination, queryEnum, queryProfileId,
+  PRIORITIES, REQUEST_STATUSES,
+} from '../validation/rules.js';
 import {
   listProjectRequests,
   getProjectRequest,
@@ -10,17 +14,39 @@ import {
 
 const router = Router();
 
-router.get('/', listProjectRequests);
-router.get('/:id', getProjectRequest);
+// Clients (own requests) and managers (all). Other roles have no business here.
+router.use(requireRole('client', 'project_manager'));
 
-router.post('/', [
-  body('title').notEmpty().withMessage('Title is required'),
-  body('description').notEmpty().withMessage('Description is required'),
-  body('priority').isIn(['low', 'medium', 'high', 'critical']).withMessage('Invalid priority'),
-  body('requested_deadline').isISO8601().withMessage('Invalid deadline date'),
-  validateRequest,
-], createProjectRequest);
+router.get('/', [...pagination(), queryEnum('status', REQUEST_STATUSES), queryProfileId('client_id'), validateRequest], listProjectRequests);
+router.get('/:id', [uuidParam('id'), validateRequest], getProjectRequest);
 
-router.patch('/:id', updateProjectRequest);
+router.post(
+  '/',
+  requireRole('client'),
+  [
+    text('title', { min: 3, max: 120, noAngle: true, label: 'Title' }),
+    text('description', { min: 10, max: 2000, label: 'Description' }),
+    optionalText('requirements', { max: 2000, label: 'Requirements' }),
+    enumField('priority', PRIORITIES),
+    dateField('requested_deadline', { label: 'Deadline' }),
+    validateRequest,
+  ],
+  createProjectRequest
+);
+
+router.patch(
+  '/:id',
+  [
+    uuidParam('id'),
+    text('title', { min: 3, max: 120, noAngle: true, optional: true, label: 'Title' }),
+    text('description', { min: 10, max: 2000, optional: true, label: 'Description' }),
+    optionalText('requirements', { max: 2000, label: 'Requirements' }),
+    enumField('priority', PRIORITIES, { optional: true }),
+    dateField('requested_deadline', { optional: true, label: 'Deadline' }),
+    enumField('status', REQUEST_STATUSES, { optional: true }),
+    validateRequest,
+  ],
+  updateProjectRequest
+);
 
 export default router;

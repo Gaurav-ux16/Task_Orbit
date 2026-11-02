@@ -1,16 +1,20 @@
 import supabase from '../config/supabase.js';
 import { createSubmission, getDownloadUrl } from '../services/submissionService.js';
 import { applyStatusTransition } from '../services/taskWorkflowService.js';
+import { requireTaskAccess, forbidden } from '../services/accessService.js';
+import { inspectUpload } from '../utils/fileGuard.js';
 
 export async function listSubmissions(req, res, next) {
   try {
+    const task = await requireTaskAccess(req.user, req.params.taskId);
+
     const { data, error } = await supabase
       .from('submissions')
       .select(`
-        *,
+        id, task_id, version_number, file_name, description, created_at, submitted_by,
         submitter:profiles!submissions_submitted_by_fkey(id, display_name)
       `)
-      .eq('task_id', req.params.taskId)
+      .eq('task_id', task.id)
       .order('version_number', { ascending: false });
 
     if (error) throw error;
@@ -29,32 +33,14 @@ export async function createTaskSubmission(req, res, next) {
       return res.status(400).json({ success: false, error: 'A deliverable file is required for submission' });
     }
 
-    // 1. Verify task exists
-    const { data: task, error: taskErr } = await supabase
-      .from('tasks')
-      .select('id, status, project_id, assignee_id, latest_submission_id')
-      .eq('id', taskId)
-      .single();
+    const task = await requireTaskAccess(req.user, taskId);
 
-    if (taskErr || !task) {
-      return res.status(404).json({ success: false, error: 'Task not found' });
+    // Ownership: only the assigned developer may deliver work (Section III-G / IV-A).
+    if (task.assignee_id !== req.user.id) {
+      throw forbidden('Access denied: You cannot submit deliverables for a task assigned to another developer.');
     }
 
-    // 2. Ownership Validation (Section III-G & Section IV-A of research paper)
-    // An assignee may ONLY submit deliverables for tasks assigned directly to them.
-    if (req.user?.role === 'assignee') {
-      if (task.assignee_id && task.assignee_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Access denied: You cannot submit deliverables for a task assigned to another developer.',
-        });
-      }
-    }
-
-    // 3. Workflow State Validation (Section III-C & Section III-D)
-    // Under the research paper's state machine, a deliverable can ONLY be submitted when in 'in_progress'.
-    // If the task is in 'revision', the assignee must first transition it to 'in_progress' (resume work).
-    // Invalid state transitions MUST be rejected with HTTP 409 Conflict.
+    // Workflow state: a deliverable can only be submitted from 'in_progress'.
     if (task.status !== 'in_progress') {
       return res.status(409).json({
         success: false,
@@ -62,17 +48,19 @@ export async function createTaskSubmission(req, res, next) {
       });
     }
 
-    // 4. Create submission record & upload file (monotonically increasing version)
+    // Content verification BEFORE anything is stored.
+    const inspected = inspectUpload(req.file);
+    if (!inspected.ok) return res.status(400).json({ success: false, error: inspected.error });
+
     const submission = await createSubmission(
       taskId,
       req.user.id,
       req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype,
+      inspected.safeName,
+      inspected.mime,
       description
     );
 
-    // 5. Apply state machine transition: in_progress → submitted
     await applyStatusTransition(taskId, 'submitted', req.user, {
       submission_id: submission.id,
       version_number: submission.version_number,
@@ -86,11 +74,12 @@ export async function createTaskSubmission(req, res, next) {
       details: {
         submission_id: submission.id,
         version_number: submission.version_number,
-        file_name: req.file.originalname,
+        file_name: inspected.safeName,
       },
     });
 
-    res.status(201).json({ success: true, data: submission });
+    const { file_path: _hidden, ...publicSubmission } = submission;
+    res.status(201).json({ success: true, data: publicSubmission });
   } catch (err) {
     next(err);
   }
@@ -102,24 +91,15 @@ export async function downloadSubmission(req, res, next) {
       .from('submissions')
       .select('id, file_path, file_name, task_id')
       .eq('id', req.params.id)
-      .single();
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ success: false, error: 'Submission not found' });
 
-    if (error || !data) return res.status(404).json({ success: false, error: 'Submission not found' });
+    const task = await requireTaskAccess(req.user, data.task_id);
 
-    // Ownership check on private deliverables (Section III-G)
-    if (req.user?.role === 'assignee') {
-      const { data: task } = await supabase
-        .from('tasks')
-        .select('assignee_id')
-        .eq('id', data.task_id)
-        .single();
-
-      if (task && task.assignee_id && task.assignee_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Access denied: You do not have permission to download deliverables for unassigned tasks.',
-        });
-      }
+    // Clients may only retrieve deliverables that have passed review.
+    if (req.user.role === 'client' && task.status !== 'approved') {
+      throw forbidden('Access denied: deliverables are released to clients once the task is approved.');
     }
 
     const signedUrl = await getDownloadUrl(data.file_path);
