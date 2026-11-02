@@ -1,12 +1,16 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 
-import { devIdentityMiddleware } from './middleware/devIdentity.js';
+import { isProduction, isTest } from './config/env.js';
+import { requestId, securityHeaders, corsPolicy, noStore } from './middleware/security.js';
+import { apiLimiter } from './middleware/rateLimit.js';
+import { inputGuard } from './middleware/inputGuard.js';
+import { attachSession, csrfProtection, requireAuth, requireRole } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import projectRequestRoutes from './routes/projectRequestRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
@@ -15,82 +19,71 @@ import reviewRoutes, { taskReviewsRouter } from './routes/reviewRoutes.js';
 import activityRoutes, { profilesRouter, workersRouter } from './routes/activityRoutes.js';
 import { isSupabaseConfigured, checkSupabaseConnectivity } from './config/supabase.js';
 
-dotenv.config();
-
 const app = express();
 
-// ── Security & logging ──────────────────────────────────────────────────────
-app.use(helmet());
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, process.env.FRONTEND_URL || 'http://localhost:5173');
-    }
-  },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-User-Id', 'X-Dev-Role'],
-}));
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+// ── Hardening ────────────────────────────────────────────────────────────────
+app.disable('x-powered-by');
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
-// ── Body parsing ─────────────────────────────────────────────────────────────
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(requestId);
+app.use(securityHeaders());
+app.use(corsPolicy());
+if (!isTest()) app.use(morgan(isProduction() ? 'combined' : 'dev'));
+app.use(apiLimiter());
+app.use(noStore);
 
-// ── DEV IDENTITY — replace with Supabase Auth in production ─────────────────
-app.use(devIdentityMiddleware);
+// ── Parsing (small limits) ───────────────────────────────────────────────────
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+app.use(cookieParser());
 
-// ── Health & Supabase diagnostics ─────────────────────────────────────────────
+// ── Input screening, session, CSRF — before any route logic ──────────────────
+app.use(inputGuard);
+app.use(attachSession);
+app.use(csrfProtection);
+
+// ── Public endpoints ─────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), user: req.user });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, status: 'ok', service: 'taskorbit-backend', user: req.user });
+  res.json({ ok: true, status: 'ok', service: 'taskorbit-backend' });
 });
 
-app.get('/api/supabase/status', (req, res) => {
+app.use('/api/auth', authRoutes);
+
+// ── Everything below requires a valid session ────────────────────────────────
+app.use('/api', requireAuth);
+
+// Operational diagnostics: managers only (they reveal infrastructure details).
+app.get('/api/supabase/status', requireRole('project_manager'), (req, res) => {
   res.json({
     ok: true,
     configured: isSupabaseConfigured(),
-    projectUrl: isSupabaseConfigured() ? process.env.SUPABASE_URL : null,
     storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'taskorbit-files',
   });
 });
 
-app.get('/api/supabase/connectivity', async (req, res) => {
+app.get('/api/supabase/connectivity', requireRole('project_manager'), async (req, res) => {
   const result = await checkSupabaseConnectivity();
   res.status(result.ok ? 200 : 502).json(result);
 });
 
-// ── API Routes ────────────────────────────────────────────────────────────────
+app.use('/api/users', userRoutes);
 app.use('/api/project-requests', projectRequestRoutes);
-app.use('/api/projects',         projectRoutes);
-
-// Nested routes: /api/projects/:projectId/activity
+app.use('/api/projects', projectRoutes);
 app.use('/api/projects/:projectId/activity', activityRoutes);
-
-app.use('/api/tasks',            taskRoutes);
-
-// Nested: /api/tasks/:taskId/submissions
+app.use('/api/tasks', taskRoutes);
 app.use('/api/tasks/:taskId/submissions', submissionRoutes);
-
-// Nested: /api/tasks/:taskId/reviews
 app.use('/api/tasks/:taskId/reviews', taskReviewsRouter());
-
-// Standalone: /api/submissions/:id/download
 app.use('/api/submissions', submissionDownloadRouter());
-
-// Reviews: /api/reviews/pending  and  /api/submissions/:submissionId/reviews
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/submissions', reviewRoutes);
-
-// Profiles: /api/profiles  and  Workers: /api/workers
 app.use('/api/profiles', profilesRouter());
 app.use('/api/workers', workersRouter());
 
-// ── Error handling ────────────────────────────────────────────────────────────
+// ── Errors ───────────────────────────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
 
