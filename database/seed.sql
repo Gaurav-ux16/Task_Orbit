@@ -4,17 +4,20 @@
 -- Safe to re-run: inserts only if IDs don't exist
 -- ============================================================
 
--- ── Profiles (dev fixtures) ──────────────────────────────────────────────────
-INSERT INTO profiles (id, display_name, role, skills, availability, email) VALUES
-  ('client-001',   'Alice Chen (Client)',            'client',          ARRAY['Product Management', 'Requirement Scoping'], 'available', 'alice@clientcorp.io'),
-  ('manager-001',  'Bob Martinez (Project Manager)', 'project_manager', ARRAY['Agile', 'Sprint Planning', 'Risk Mitigation'],    'available', 'bob@taskorbit.io'),
-  ('assignee-001', 'Carol Singh (Developer)',        'assignee',         ARRAY['React', 'TypeScript', 'Node.js', 'PostgreSQL'],  'available', 'carol@taskorbit.io'),
-  ('assignee-002', 'Dave Kim (Developer)',           'assignee',         ARRAY['Express.js', 'REST APIs', 'PostgreSQL', 'Docker'], 'busy',   'dave@taskorbit.io'),
-  ('reviewer-001', 'Eve Johnson (Reviewer)',         'reviewer',         ARRAY['Code Review', 'QA Automation', 'Security Audits'], 'available', 'eve@taskorbit.io')
+-- ── Profiles (DEV-ONLY demo accounts) ─────────────────────────────────────────
+-- Demo password for every account below: TaskOrbit@2026!   (bcrypt hash stored)
+-- NEVER load this seed into a production database.
+INSERT INTO profiles (id, display_name, role, skills, availability, email, password_hash) VALUES
+  ('client-001',   'Alice Chen (Client)',            'client',          ARRAY['Product Management', 'Requirement Scoping'], 'available', 'alice@clientcorp.io', '$2b$10$t45DVoHmjSqQpgFbO7whceqp6hc7yYe9/Pzc8i6eFfS0P4KqnS2dq'),
+  ('manager-001',  'Bob Martinez (Project Manager)', 'project_manager', ARRAY['Agile', 'Sprint Planning', 'Risk Mitigation'],    'available', 'bob@taskorbit.io', '$2b$10$t45DVoHmjSqQpgFbO7whceqp6hc7yYe9/Pzc8i6eFfS0P4KqnS2dq'),
+  ('assignee-001', 'Carol Singh (Developer)',        'assignee',         ARRAY['React', 'TypeScript', 'Node.js', 'PostgreSQL'],  'available', 'carol@taskorbit.io', '$2b$10$t45DVoHmjSqQpgFbO7whceqp6hc7yYe9/Pzc8i6eFfS0P4KqnS2dq'),
+  ('assignee-002', 'Dave Kim (Developer)',           'assignee',         ARRAY['Express.js', 'REST APIs', 'PostgreSQL', 'Docker'], 'busy',   'dave@taskorbit.io', '$2b$10$t45DVoHmjSqQpgFbO7whceqp6hc7yYe9/Pzc8i6eFfS0P4KqnS2dq'),
+  ('reviewer-001', 'Eve Johnson (Reviewer)',         'reviewer',         ARRAY['Code Review', 'QA Automation', 'Security Audits'], 'available', 'eve@taskorbit.io', '$2b$10$t45DVoHmjSqQpgFbO7whceqp6hc7yYe9/Pzc8i6eFfS0P4KqnS2dq')
 ON CONFLICT (id) DO UPDATE SET
   skills = EXCLUDED.skills,
   availability = EXCLUDED.availability,
-  email = EXCLUDED.email;
+  email = EXCLUDED.email,
+  password_hash = COALESCE(profiles.password_hash, EXCLUDED.password_hash);
 
 -- ── Project Requests ─────────────────────────────────────────────────────────
 INSERT INTO project_requests (id, client_id, title, description, requirements, priority, requested_deadline, status) VALUES

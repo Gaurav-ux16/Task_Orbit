@@ -1,6 +1,6 @@
 -- ============================================================
 -- TaskOrbit Database Schema
--- Version: 1.0.0
+-- Version: 2.0.0 (adds authentication & sessions — see migrations/001_auth_sessions.sql)
 -- Compatible with Supabase PostgreSQL
 -- ============================================================
 -- Run this file in the Supabase SQL Editor to initialize the schema.
@@ -11,7 +11,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── PROFILES ──────────────────────────────────────────────────────────────────
--- Designed to be extended with Supabase Auth (auth.users) later.
+-- Authentication is handled by the Express API (bcrypt + server-side sessions).
 CREATE TABLE IF NOT EXISTS profiles (
   id           TEXT PRIMARY KEY,  -- Will be UUID from auth.users in production
   display_name TEXT NOT NULL,
@@ -19,9 +19,15 @@ CREATE TABLE IF NOT EXISTS profiles (
   skills       TEXT[] DEFAULT '{}',
   availability TEXT NOT NULL DEFAULT 'available' CHECK (availability IN ('available', 'busy', 'on_leave')),
   email        TEXT,
+  password_hash TEXT,                       -- bcrypt; never returned by the API
+  failed_logins INTEGER NOT NULL DEFAULT 0,
+  locked_until  TIMESTAMPTZ,
+  last_login_at TIMESTAMPTZ,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_profiles_email_lower ON profiles (LOWER(email));
 
 -- ── PROJECT REQUESTS ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS project_requests (
@@ -131,3 +137,7 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 CREATE INDEX IF NOT EXISTS idx_activity_logs_project_id ON activity_logs(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_task_id ON activity_logs(task_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
+
+-- ── SESSIONS / SECURITY HARDENING ─────────────────────────────────────────────
+-- Run migrations/001_auth_sessions.sql after this file to create the sessions table,
+-- enable row-level security and revoke credential columns from public roles.
