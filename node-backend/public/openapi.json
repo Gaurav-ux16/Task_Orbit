@@ -1,0 +1,20 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "TaskOrbit API", "version": "2.0.0", "description": "Cookie-session authenticated API. State-changing calls require the X-CSRF-Token header." },
+  "components": {
+    "securitySchemes": { "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "to_sid" } }
+  },
+  "security": [{ "sessionCookie": [] }],
+  "paths": {
+    "/api/auth/login": { "post": { "summary": "Sign in", "security": [], "responses": { "200": { "description": "Session cookie + csrfToken" }, "401": { "description": "Invalid credentials" }, "423": { "description": "Account locked" } } } },
+    "/api/auth/register": { "post": { "summary": "Register a client", "security": [], "responses": { "201": { "description": "Created" }, "400": { "description": "Validation / policy failure" }, "409": { "description": "E-mail exists" } } } },
+    "/api/auth/me": { "get": { "summary": "Current session", "responses": { "200": { "description": "User + csrfToken" }, "401": { "description": "Not signed in" } } } },
+    "/api/projects": { "get": { "summary": "List visible projects", "responses": { "200": { "description": "OK" } } }, "post": { "summary": "Create project (manager)", "responses": { "201": { "description": "Created" }, "403": { "description": "Forbidden" } } } },
+    "/api/tasks": { "get": { "summary": "List visible tasks", "responses": { "200": { "description": "OK" } } }, "post": { "summary": "Create task (manager); 409 on scheduling conflict", "responses": { "201": { "description": "Created" }, "409": { "description": "Conflict" } } } },
+    "/api/tasks/{id}/status": { "post": { "summary": "Transition task status", "responses": { "200": { "description": "OK" }, "403": { "description": "Role/ownership" }, "409": { "description": "Illegal transition" } } } },
+    "/api/tasks/{id}/submissions": { "post": { "summary": "Upload deliverable (assignee, multipart)", "responses": { "201": { "description": "Created" }, "400": { "description": "Rejected file" }, "409": { "description": "Wrong state" } } } },
+    "/api/submissions/{id}/reviews": { "post": { "summary": "Review latest submission (reviewer)", "responses": { "201": { "description": "Created" }, "409": { "description": "Stale review" } } } },
+    "/api/reports/summary": { "get": { "summary": "Dashboard statistics (manager)", "responses": { "200": { "description": "OK" } } } },
+    "/api/reports/tasks.csv": { "get": { "summary": "Streamed CSV export (manager)", "responses": { "200": { "description": "text/csv" } } } }
+  }
+}

@@ -1,4 +1,5 @@
 import supabase from '../config/supabase.js';
+import { bus } from './eventBus.js';
 
 /**
  * Valid task status transitions defined by Section III-C of the research paper:
@@ -141,6 +142,8 @@ export async function applyStatusTransition(taskId, nextStatus, actor, details =
     action: `status_changed_to_${nextStatus}`,
     details: { previous_status: task.status, ...details },
   });
+
+  bus.emit('task.status_changed', { task_id: taskId, from: task.status, to: nextStatus, actor_id: actorObj.id || null });
 
   return { taskId, previousStatus: task.status, newStatus: nextStatus };
 }

@@ -9,6 +9,11 @@ import { inputGuard } from './middleware/inputGuard.js';
 import { attachSession, csrfProtection, requireAuth, requireRole } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import reportRoutes from './routes/reportRoutes.js';
+import { LOG_DIR } from './services/eventBus.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import projectRequestRoutes from './routes/projectRequestRoutes.js';
@@ -28,7 +33,12 @@ if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PRO
 app.use(requestId);
 app.use(securityHeaders());
 app.use(corsPolicy());
-if (!isTest()) app.use(morgan(isProduction() ? 'combined' : 'dev'));
+if (!isTest()) {
+  // Console + persistent access log file (Node fs write stream).
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+  app.use(morgan('combined', { stream: fs.createWriteStream(path.join(LOG_DIR, 'access.log'), { flags: 'a' }) }));
+  app.use(morgan(isProduction() ? 'combined' : 'dev'));
+}
 app.use(apiLimiter());
 app.use(noStore);
 
@@ -41,6 +51,15 @@ app.use(cookieParser());
 app.use(inputGuard);
 app.use(attachSession);
 app.use(csrfProtection);
+
+// ── Static resources: API documentation (express.static) ─────────────────────
+const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
+app.use('/docs', (req, res, next) => {
+  // Static docs use an external stylesheet only, so a strict CSP still holds.
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  next();
+}, express.static(publicDir, { index: 'index.html', dotfiles: 'ignore', maxAge: '5m' }));
 
 // ── Public endpoints ─────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
@@ -71,6 +90,7 @@ app.get('/api/supabase/connectivity', requireRole('project_manager'), async (req
 });
 
 app.use('/api/users', userRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/project-requests', projectRequestRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/projects/:projectId/activity', activityRoutes);

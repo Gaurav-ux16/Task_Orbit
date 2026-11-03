@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskOrbit API</title>
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+  <header>
+    <h1>TaskOrbit API</h1>
+    <p>Workflow-aware project management REST API &middot; served as a static resource by Express (<code>express.static</code>)</p>
+  </header>
+  <main>
+    <section>
+      <h2>Authentication</h2>
+      <p>Sign in with <code>POST /api/auth/login</code>. The server answers with an <code>HttpOnly</code> session cookie
+         (<code>to_sid</code>) and a CSRF token. Send the token in <code>X-CSRF-Token</code> on every POST, PATCH and DELETE.</p>
+    </section>
+    <section>
+      <h2>Endpoints</h2>
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Who</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>POST</td><td>/api/auth/login</td><td>public</td><td>Sign in, start session</td></tr>
+          <tr><td>POST</td><td>/api/auth/register</td><td>public</td><td>Create a client account</td></tr>
+          <tr><td>GET</td><td>/api/auth/me</td><td>any user</td><td>Current user + CSRF token</td></tr>
+          <tr><td>POST</td><td>/api/auth/logout</td><td>any user</td><td>Destroy the session</td></tr>
+          <tr><td>GET/POST</td><td>/api/project-requests</td><td>client, manager</td><td>Project requests</td></tr>
+          <tr><td>GET/POST/PATCH</td><td>/api/projects</td><td>role-scoped</td><td>Projects</td></tr>
+          <tr><td>GET/POST/PATCH</td><td>/api/tasks</td><td>role-scoped</td><td>Tasks, conflict preview, status transitions</td></tr>
+          <tr><td>POST</td><td>/api/tasks/:id/submissions</td><td>assignee</td><td>Upload a versioned deliverable</td></tr>
+          <tr><td>POST</td><td>/api/submissions/:id/reviews</td><td>reviewer</td><td>Approve or request revision</td></tr>
+          <tr><td>GET</td><td>/api/reports/summary</td><td>manager</td><td>Dashboard statistics</td></tr>
+          <tr><td>GET</td><td>/api/reports/tasks.csv</td><td>manager</td><td>Streamed CSV export</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Machine-readable</h2>
+      <p><a href="openapi.json">openapi.json</a> (OpenAPI 3.0 outline) &middot; import the Postman collection from the repository.</p>
+    </section>
+  </main>
+</body>
+</html>
