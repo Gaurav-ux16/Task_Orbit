@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { workersApi, projectsApi } from '../../services/taskOrbitApi';
 import { StatusBadge, PriorityBadge } from '../../components/StatusBadge';
 import { LoadingState, Spinner } from '../../components/Spinner';
@@ -44,15 +45,17 @@ export function WorkerDirectoryPage() {
     loadData();
   }, []);
 
-  const filteredWorkers = workers.filter((w) => {
+  const debouncedSearch = useDebounce(search, 250);
+  const filteredWorkers = useMemo(() => workers.filter((w) => {
+    const q = debouncedSearch.toLowerCase();
     const matchesSearch =
-      w.display_name.toLowerCase().includes(search.toLowerCase()) ||
-      (w.email && w.email.toLowerCase().includes(search.toLowerCase())) ||
-      (w.skills && w.skills.some((s) => s.toLowerCase().includes(search.toLowerCase())));
+      w.display_name.toLowerCase().includes(q) ||
+      (w.email && w.email.toLowerCase().includes(q)) ||
+      (w.skills && w.skills.some((s) => s.toLowerCase().includes(q)));
     const matchesAvailability =
       availabilityFilter === 'all' || w.availability === availabilityFilter;
     return matchesSearch && matchesAvailability;
-  });
+  }), [workers, debouncedSearch, availabilityFilter]);
 
   const totalWorkers = workers.length;
   const availableCount = workers.filter((w) => w.availability === 'available').length;

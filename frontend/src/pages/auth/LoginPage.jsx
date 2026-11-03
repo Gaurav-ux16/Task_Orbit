@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Layers } from 'lucide-react';
+import { AuthShell } from './AuthShell';
 import { login, clearAuthError, selectAuthError, selectSessionExpired } from '../../features/auth/authSlice';
 import { validateLogin } from '../../utils/validation';
 import { FormField } from '../../components/FormField';
@@ -46,13 +46,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-1 px-4">
-      <div className="w-full max-w-sm bg-white border border-surface-2 rounded-lg shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-1">
-          <Layers size={20} className="text-accent" />
-          <span className="font-semibold text-ink text-lg tracking-tight">TaskOrbit</span>
-        </div>
-        <h1 className="text-sm text-ink-muted mb-5">Sign in to your workspace</h1>
+    <AuthShell title="Welcome back" subtitle="Sign in to your workspace.">
 
         {expired && <Alert type="warning" className="mb-3">Your session expired. Please sign in again.</Alert>}
         <ErrorAlert message={serverError} />
@@ -106,7 +100,6 @@ export function LoginPage() {
             Demo (dev only): bob@taskorbit.io · carol@taskorbit.io · eve@taskorbit.io · alice@clientcorp.io — see README.
           </p>
         )}
-      </div>
-    </div>
+    </AuthShell>
   );
 }

@@ -1,33 +1,35 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { store } from './app/store';
 import { bootstrapSession, selectCurrentUser, selectAuthStatus } from './features/auth/authSlice';
 import { AppLayout } from './layouts/AppLayout';
+import { Spinner } from './components/Spinner';
 import { ProtectedRoute, PublicOnlyRoute, ROLE_HOME } from './components/ProtectedRoute';
 
+import { LandingPage } from './pages/landing/LandingPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForbiddenPage } from './pages/auth/ForbiddenPage';
 
 // Manager pages
-import { ManagerProjectsPage } from './pages/manager/ManagerProjectsPage';
-import { ManagerProjectDetailPage } from './pages/manager/ManagerProjectDetailPage';
-import { ManagerTasksPage } from './pages/manager/ManagerTasksPage';
-import { ManagerRequestsPage } from './pages/manager/ManagerRequestsPage';
-import { WorkerDirectoryPage } from './pages/manager/WorkerDirectoryPage';
+const ManagerProjectsPage = lazy(() => import('./pages/manager/ManagerProjectsPage').then((m) => ({ default: m.ManagerProjectsPage })));
+const ManagerProjectDetailPage = lazy(() => import('./pages/manager/ManagerProjectDetailPage').then((m) => ({ default: m.ManagerProjectDetailPage })));
+const ManagerTasksPage = lazy(() => import('./pages/manager/ManagerTasksPage').then((m) => ({ default: m.ManagerTasksPage })));
+const ManagerRequestsPage = lazy(() => import('./pages/manager/ManagerRequestsPage').then((m) => ({ default: m.ManagerRequestsPage })));
+const WorkerDirectoryPage = lazy(() => import('./pages/manager/WorkerDirectoryPage').then((m) => ({ default: m.WorkerDirectoryPage })));
 
 // Assignee pages
-import { AssigneeTasksPage } from './pages/assignee/AssigneeTasksPage';
-import { TaskDetails } from './pages/assignee/TaskDetails';
+const AssigneeTasksPage = lazy(() => import('./pages/assignee/AssigneeTasksPage').then((m) => ({ default: m.AssigneeTasksPage })));
+const TaskDetails = lazy(() => import('./pages/assignee/TaskDetails').then((m) => ({ default: m.TaskDetails })));
 
 // Reviewer pages
-import { ReviewerQueuePage } from './pages/reviewer/ReviewerQueuePage';
+const ReviewerQueuePage = lazy(() => import('./pages/reviewer/ReviewerQueuePage').then((m) => ({ default: m.ReviewerQueuePage })));
 
 // Client pages
-import { ClientRequestsPage } from './pages/client/ClientRequestsPage';
-import { ClientProjectsPage } from './pages/client/ClientProjectsPage';
-import { ClientProjectDetailPage } from './pages/client/ClientProjectDetailPage';
+const ClientRequestsPage = lazy(() => import('./pages/client/ClientRequestsPage').then((m) => ({ default: m.ClientRequestsPage })));
+const ClientProjectsPage = lazy(() => import('./pages/client/ClientProjectsPage').then((m) => ({ default: m.ClientProjectsPage })));
+const ClientProjectDetailPage = lazy(() => import('./pages/client/ClientProjectDetailPage').then((m) => ({ default: m.ClientProjectDetailPage })));
 
 function RootRedirect() {
   const user = useSelector(selectCurrentUser);
@@ -41,7 +43,9 @@ function Shell() {
   return (
     <ProtectedRoute>
       <AppLayout>
-        <Outlet />
+        <Suspense fallback={<div className="flex justify-center py-24" role="status" aria-label="Loading page"><Spinner size={22} /></div>}>
+          <Outlet />
+        </Suspense>
       </AppLayout>
     </ProtectedRoute>
   );
@@ -59,11 +63,11 @@ export function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 
       <Route element={<Shell />}>
-        <Route path="/" element={<RootRedirect />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />
 
         {/* Manager */}

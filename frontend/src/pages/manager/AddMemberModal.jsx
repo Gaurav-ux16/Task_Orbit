@@ -5,6 +5,7 @@ import { FormField } from '../../components/FormField';
 import { Spinner } from '../../components/Spinner';
 import { usersApi } from '../../services/taskOrbitApi';
 import { validateStaffAccount } from '../../utils/validation';
+import { useToast } from '../../context/ToastContext';
 
 /** Project-manager-only: provisions an account for staff (or a client). */
 export function AddMemberModal({ onClose, onCreated }) {
@@ -12,6 +13,7 @@ export function AddMemberModal({ onClose, onCreated }) {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const { notify } = useToast();
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -36,6 +38,7 @@ export function AddMemberModal({ onClose, onCreated }) {
         password: form.password,
         skills,
       });
+      notify(`Account created for ${form.display_name.trim()}`);
       onCreated?.(res.data.data);
     } catch (err) {
       setError(err.friendlyMessage || 'Could not create the account');

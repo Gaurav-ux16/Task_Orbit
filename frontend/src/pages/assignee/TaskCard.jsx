@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Calendar, PlayCircle, ArrowRight, AlertTriangle } from 'lucide-react';
 import { TaskStatusBadge } from '../../components/TaskStatusBadge';
 import { PriorityBadge } from '../../components/StatusBadge';
@@ -19,7 +20,7 @@ import { Spinner } from '../../components/Spinner';
  * @param {Function} [props.onStart] - Parent callback invoked to start a 'todo' task
  * @param {boolean} [props.isStarting] - Whether this specific task is currently transitioning
  */
-export function TaskCard({ task, onOpen, onStart, isStarting = false }) {
+export const TaskCard = memo(function TaskCard({ task, onOpen, onStart, isStarting = false }) {
   const overdue = isOverdue(task.due_date, task.status);
   const canStart = task.status === 'todo';
 
@@ -94,6 +95,6 @@ export function TaskCard({ task, onOpen, onStart, isStarting = false }) {
       </footer>
     </article>
   );
-}
+});
 
 export default TaskCard;

@@ -6,6 +6,7 @@ import { Spinner } from '../../components/Spinner';
 import { tasksApi, profilesApi } from '../../services/taskOrbitApi';
 import { formatDate } from '../../utils/format';
 import { validateTask } from '../../utils/validation';
+import { useToast } from '../../context/ToastContext';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 /**
@@ -15,6 +16,7 @@ import { AlertTriangle, CheckCircle } from 'lucide-react';
  *  - projects: when no projectId is given, lets the manager pick the target project
  */
 export function NewTaskModal({ projectId: fixedProjectId, projects = [], onClose, editTask = null, defaults = {} }) {
+  const { notify } = useToast();
   const initial = editTask || defaults;
   const [projectId, setProjectId] = useState(fixedProjectId || projects[0]?.id || '');
   const [form, setForm] = useState({
@@ -99,6 +101,7 @@ export function NewTaskModal({ projectId: fixedProjectId, projects = [], onClose
       } else {
         await tasksApi.create({ ...payload, project_id: projectId });
       }
+      notify(editTask?.id ? 'Task updated' : 'Task created');
       onClose();
     } catch (err) {
       const data = err.response?.data;

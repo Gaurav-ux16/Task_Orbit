@@ -1,11 +1,15 @@
+import type { TaskStatus, Priority } from '../types/models';
+
+type MaybeDate = string | null | undefined;
+
 /**
  * Format a date string to a human-readable form.
  * Returns '—' if the date is null/undefined.
  */
-export function formatDate(dateStr, options = {}) {
+export function formatDate(dateStr: MaybeDate, options: Intl.DateTimeFormatOptions = {}): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
-  if (isNaN(date)) return '—';
+  if (isNaN(date.getTime())) return '—';
   return date.toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
@@ -14,10 +18,10 @@ export function formatDate(dateStr, options = {}) {
   });
 }
 
-export function formatDateTime(dateStr) {
+export function formatDateTime(dateStr: MaybeDate): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
-  if (isNaN(date)) return '—';
+  if (isNaN(date.getTime())) return '—';
   return date.toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',
@@ -30,7 +34,7 @@ export function formatDateTime(dateStr) {
 /**
  * Return true if a due date is in the past.
  */
-export function isOverdue(dueDateStr, status) {
+export function isOverdue(dueDateStr: MaybeDate, status?: TaskStatus | string): boolean {
   if (!dueDateStr || status === 'approved') return false;
   return new Date(dueDateStr) < new Date();
 }
@@ -38,8 +42,8 @@ export function isOverdue(dueDateStr, status) {
 /**
  * Return a CSS class string for a given status badge.
  */
-export function statusBadgeClass(status) {
-  const map = {
+export function statusBadgeClass(status: string): string {
+  const map: Record<string, string> = {
     todo: 'badge-todo',
     in_progress: 'badge-in_progress',
     submitted: 'badge-submitted',
@@ -59,8 +63,8 @@ export function statusBadgeClass(status) {
 /**
  * Human-readable label for a status value.
  */
-export function statusLabel(status) {
-  const map = {
+export function statusLabel(status: string): string {
+  const map: Record<string, string> = {
     todo: 'To Do',
     in_progress: 'In Progress',
     submitted: 'Submitted',
@@ -77,14 +81,14 @@ export function statusLabel(status) {
   return map[status] || status;
 }
 
-export function priorityLabel(p) {
+export function priorityLabel(p?: Priority | string | null): string {
   return p ? p.charAt(0).toUpperCase() + p.slice(1) : '—';
 }
 
 /**
  * Format bytes to human-readable file size.
  */
-export function formatFileSize(bytes) {
+export function formatFileSize(bytes?: number | null): string {
   if (!bytes) return '—';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -94,7 +98,7 @@ export function formatFileSize(bytes) {
 /**
  * Relative time string (e.g. "3 days ago").
  */
-export function relativeTime(dateStr) {
+export function relativeTime(dateStr: MaybeDate): string {
   if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);

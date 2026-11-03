@@ -2,30 +2,30 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx}",
+    "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
     extend: {
       colors: {
         // Warm-white surface
         surface: {
-          DEFAULT: '#fafaf9',
-          1: '#f5f5f4',
-          2: '#e7e5e4',
+          DEFAULT: 'rgb(var(--surface) / <alpha-value>)',
+          1: 'rgb(var(--surface-1) / <alpha-value>)',
+          2: 'rgb(var(--surface-2) / <alpha-value>)',
         },
         // Charcoal text
         ink: {
-          DEFAULT: '#1c1917',
-          light: '#44403c',
-          muted: '#78716c',
-          faint: '#a8a29e',
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          light: 'rgb(var(--ink-light) / <alpha-value>)',
+          muted: 'rgb(var(--ink-muted) / <alpha-value>)',
+          faint: 'rgb(var(--ink-faint) / <alpha-value>)',
         },
         // Indigo accent
         accent: {
-          DEFAULT: '#4f46e5',
-          light: '#6366f1',
-          subtle: '#e0e7ff',
-          muted: '#c7d2fe',
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          light: 'rgb(var(--accent-light) / <alpha-value>)',
+          subtle: 'rgb(var(--accent-subtle) / <alpha-value>)',
+          muted: 'rgb(var(--accent-muted) / <alpha-value>)',
         },
         // Status
         status: {
@@ -39,6 +39,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       fontSize: {

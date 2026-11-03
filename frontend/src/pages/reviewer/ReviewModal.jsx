@@ -6,6 +6,7 @@ import { StatusBadge, PriorityBadge } from '../../components/StatusBadge';
 import { formatDate } from '../../utils/format';
 import { reviewsApi, submissionsApi, tasksApi } from '../../services/taskOrbitApi';
 import { validateReview } from '../../utils/validation';
+import { useToast } from '../../context/ToastContext';
 import { CheckCircle2, RotateCcw, Download, Clock, FileText, AlertTriangle } from 'lucide-react';
 
 export function ReviewModal({ task, onClose }) {
@@ -19,6 +20,7 @@ export function ReviewModal({ task, onClose }) {
   const [error, setError] = useState('');
   const [staleError, setStaleError] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
+  const { notify } = useToast();
   const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export function ReviewModal({ task, onClose }) {
         decision,
         feedback: feedback.trim() || undefined,
       });
+      notify(decision === 'approved' ? 'Deliverable approved' : 'Revision requested');
       onClose();
     } catch (err) {
       if (err.response?.status === 409) {

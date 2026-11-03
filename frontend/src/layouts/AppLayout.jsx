@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Layers, FolderKanban, CheckSquare, FileText, Star, Users, LogOut, KeyRound } from 'lucide-react';
+import { Layers, FolderKanban, CheckSquare, FileText, Star, Users, LogOut, KeyRound, Moon, Sun } from 'lucide-react';
 import { selectCurrentUser, logout } from '../features/auth/authSlice';
+import { useTheme } from '../context/ThemeContext';
 import { ChangePasswordModal } from '../pages/auth/ChangePasswordModal';
 
 const ROLE_NAVS = {
@@ -32,6 +33,7 @@ export function AppLayout({ children }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const { theme, toggle } = useTheme();
 
   const navItems = ROLE_NAVS[user?.role] || [];
 
@@ -65,6 +67,9 @@ export function AppLayout({ children }) {
             <p className="font-medium text-ink text-xs truncate" title={user?.display_name}>{user?.display_name}</p>
             <p className="text-2xs text-ink-muted">{ROLE_LABELS[user?.role]}</p>
           </div>
+          <button className="btn-ghost btn btn-sm w-full justify-start gap-2" onClick={toggle} aria-label="Toggle dark mode">
+            {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />} {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
           <button className="btn-ghost btn btn-sm w-full justify-start gap-2" onClick={() => setShowPassword(true)}>
             <KeyRound size={13} /> Change password
           </button>

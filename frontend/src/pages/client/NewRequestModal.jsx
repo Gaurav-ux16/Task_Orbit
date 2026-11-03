@@ -6,9 +6,11 @@ import { FormField } from '../../components/FormField';
 import { Spinner } from '../../components/Spinner';
 import { createProjectRequest } from '../../features/clients/projectRequestsSlice';
 import { validateProjectRequest } from '../../utils/validation';
+import { useToast } from '../../context/ToastContext';
 
 export function NewRequestModal({ onClose, onCreated }) {
   const dispatch = useDispatch();
+  const { notify } = useToast();
 
   const [form, setForm] = useState({
     title: '',
@@ -48,6 +50,7 @@ export function NewRequestModal({ onClose, onCreated }) {
       };
 
       const result = await dispatch(createProjectRequest(payload)).unwrap();
+      notify('Project request submitted');
       onCreated?.(result);
       onClose();
     } catch (err) {

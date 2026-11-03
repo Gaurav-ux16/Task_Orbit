@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { Plus, FolderKanban } from 'lucide-react';
+import { Plus, FolderKanban, Download, ListChecks, AlertTriangle, CheckCircle2, Layers } from 'lucide-react';
+import { reportsApi } from '../../services/taskOrbitApi';
+import { StatCard } from '../../components/StatCard';
+import { useToast } from '../../context/ToastContext';
 import { fetchProjects, selectProjects, selectProjectsLoading } from '../../features/projects/projectsSlice';
 import { StatusBadge } from '../../components/StatusBadge';
 import { LoadingState } from '../../components/Spinner';
@@ -15,6 +18,27 @@ export function ManagerProjectsPage() {
   const loading = useSelector(selectProjectsLoading);
   const error = useSelector((s) => s.projects.error);
   const [showNew, setShowNew] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const { notify } = useToast();
+
+  useEffect(() => {
+    reportsApi.summary().then((r) => setSummary(r.data.data)).catch(() => setSummary(null));
+  }, [projects.length]);
+
+  async function exportCsv() {
+    try {
+      const res = await reportsApi.tasksCsv();
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'taskorbit-tasks.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      notify('Task report downloaded');
+    } catch (err) {
+      notify(err.friendlyMessage || 'Export failed', 'error');
+    }
+  }
 
   useEffect(() => { dispatch(fetchProjects()); }, [dispatch]);
 
@@ -25,13 +49,27 @@ export function ManagerProjectsPage() {
           <h1 className="text-xl font-semibold">Projects</h1>
           <p className="text-xs text-ink-muted mt-0.5">{projects.length} project{projects.length !== 1 ? 's' : ''}</p>
         </div>
-        <button className="btn-primary btn" onClick={() => setShowNew(true)}>
-          <Plus size={14} /> New Project
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-secondary btn" onClick={exportCsv}>
+            <Download size={14} /> Export CSV
+          </button>
+          <button className="btn-primary btn" onClick={() => setShowNew(true)}>
+            <Plus size={14} /> New Project
+          </button>
+        </div>
       </div>
 
       <div className="page-body">
         <ErrorAlert message={error} />
+
+        {summary && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5" aria-label="Portfolio summary">
+            <StatCard label="Active projects" value={summary.projects.active} hint={`${summary.projects.total} total`} icon={Layers} />
+            <StatCard label="Open tasks" value={summary.tasks.total - summary.tasks.by_status.approved} hint={`${summary.tasks.by_status.in_review + summary.tasks.by_status.submitted} awaiting review`} tone="amber" icon={ListChecks} />
+            <StatCard label="Overdue" value={summary.tasks.overdue} hint="not yet approved" tone="red" icon={AlertTriangle} />
+            <StatCard label="Completion" value={`${summary.tasks.completion_pct}%`} hint={`${summary.tasks.by_status.approved} approved`} tone="green" icon={CheckCircle2} />
+          </div>
+        )}
 
         {loading ? <LoadingState /> : projects.length === 0 ? (
           <div className="empty-state">

@@ -69,3 +69,9 @@ export const authApi = {
 export const usersApi = {
   create: (data) => api.post('/api/users', data),
 };
+
+// Reports (project managers only)
+export const reportsApi = {
+  summary: () => api.get('/api/reports/summary'),
+  tasksCsv: () => api.get('/api/reports/tasks.csv', { responseType: 'blob' }),
+};

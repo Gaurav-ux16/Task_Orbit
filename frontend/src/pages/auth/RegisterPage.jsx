@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Layers } from 'lucide-react';
+import { AuthShell } from './AuthShell';
 import { register, clearAuthError, selectAuthError } from '../../features/auth/authSlice';
 import { validateRegistration, passwordProblems } from '../../utils/validation';
 import { FormField } from '../../components/FormField';
@@ -44,13 +44,7 @@ export function RegisterPage() {
   const missing = form.password ? passwordProblems(form.password, { email: form.email, name: form.display_name }) : [];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-1 px-4 py-8">
-      <div className="w-full max-w-sm bg-white border border-surface-2 rounded-lg shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-1">
-          <Layers size={20} className="text-accent" />
-          <span className="font-semibold text-ink text-lg tracking-tight">TaskOrbit</span>
-        </div>
-        <h1 className="text-sm text-ink-muted mb-5">Create a client account</h1>
+    <AuthShell title="Create your account" subtitle="For clients. Team members are added by a project manager.">
 
         <ErrorAlert message={serverError} />
 
@@ -99,7 +93,6 @@ export function RegisterPage() {
         <p className="text-2xs text-ink-faint mt-3 text-center">
           Developer, reviewer and manager accounts are created by a project manager.
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }
