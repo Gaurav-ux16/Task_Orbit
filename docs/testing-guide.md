@@ -7,8 +7,8 @@ This guide provides end-to-end verification and testing procedures for the **Tas
 Run everything:
 
 ```bash
-cd node-backend && npm test        # 9 suites / 342 tests  (Jest + Supertest, in-memory DB)
-cd frontend     && npm test        # 4 suites / 79 tests   (Vitest + Testing Library, jsdom)
+cd node-backend && npm test        # 10 suites / 349 tests  (Jest + Supertest, in-memory DB)
+cd frontend     && npm test        # 5 suites / 89 tests   (Vitest + Testing Library, jsdom)
 cd frontend     && npm run lint && npm run build
 ```
 
@@ -187,7 +187,7 @@ Execute automated verification suites from the terminal:
 cd d:\wt_cp_task_orbit\node-backend
 npm test
 ```
-**Expected Outcome**: all suites green (342 tests, 9 suites) — see the matrix in section 0.
+**Expected Outcome**: all suites green (349 tests, 10 suites) — see the matrix in section 0.
 
 ### B. Supabase Diagnostic Probing (Live Verification)
 Test the Express Supabase endpoints:

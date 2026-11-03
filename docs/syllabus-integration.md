@@ -5,6 +5,20 @@
 **Last Updated**: 2026-10-27  
 **Current Milestone**: Complete Research-Paper-Aligned Implementation of All Modules + Unit I, II, III & IV Syllabus Integrations
 
+
+## Syllabus coverage map (all six units)
+
+| Unit | Topics covered | Where in the project |
+|---|---|---|
+| **I – Server-side (PHP)** | Forms, validation, cookies & sessions, file handling, exceptions, MySQL | `php-demo/` (upload + validation + receipt), plus the same ideas in the main app: validated forms, session cookies, file upload checks |
+| **II – React** | Components, JSX, props/state, lifting state, forms, events, refs, keys, Router, Redux (Flux) | Whole `frontend/` — Redux Toolkit store, React Router v7, controlled forms (`SubmissionForm` uses `useRef`), keyed lists |
+| **III – Servlets & JSP** | Servlet lifecycle, parameters, sessions, cookies, JDBC, JSP/JavaBeans, MVC | `academic-demos/servlet-jsp-demo/` (`SessionPreferenceServlet`, `TaskControllerServlet`, JSP views, beans) |
+| **IV – Spring Boot** | Core features, Web apps, Spring Security, JPA, testing, Postman | `academic-demos/spring-boot-demo/` + Postman collection (`taskorbit.postman_collection.json`, incl. login & attack requests) |
+| **V – Advanced React** | TypeScript, performance tuning, SSR, hooks, state management, advanced patterns | TypeScript: `src/types/models.ts`, `src/utils/format.ts`, `npm run typecheck` · Performance: `React.lazy` + `Suspense` route splitting, `React.memo` (`TaskCard`, `StatCard`), `useMemo` + `useDebounce` (worker search) · SSR: `src/ssr/StatusSummary.jsx` + `npm run ssr:demo` · Hooks: `useDebounce`, `useLocalStorage` · Patterns: Context API (`ThemeContext`, `ToastContext`), Error Boundary, Redux slices, route guards |
+| **VI – Node.js** | Modules, NPM, Express, file system, static resources, DB connectivity | ES modules + NPM scripts; Express middleware pipeline; **static resources**: `/docs` served by `express.static` (`node-backend/public`); **fs**: access log stream + event log (`logs/`); **streams**: `GET /api/reports/tasks.csv`; **events**: `EventEmitter` bus (`services/eventBus.js`); DB connectivity via Supabase SDK |
+
+Tests for Units V & VI: `frontend/src/unit5.test.jsx`, `node-backend/tests/unit6.test.js`.
+
 ---
 
 ## A. Project Architecture

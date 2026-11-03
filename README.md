@@ -48,6 +48,10 @@ Password for all of them: `TaskOrbit@2026!`
 | Transport & headers | Helmet (CSP `default-src 'none'`, HSTS in production, `nosniff`, no referrer), strict credentialed CORS allow-list, `no-store`, request ids, 100 kB body cap, no stack traces in production |
 | Database | Supabase SDK only (parameterised); CHECK / FK / UNIQUE constraints; RLS enabled with no public policies (`database/migrations/001_auth_sessions.sql`); audit trail for auth events |
 
+## Syllabus coverage (Units I–VI)
+
+See the coverage map in [docs/syllabus-integration.md](docs/syllabus-integration.md). Highlights added for the final units: lazy-loaded routes, memoisation, custom hooks, Context-based dark mode and toasts, an error boundary, TypeScript types, an SSR demo (`npm run ssr:demo`), a static API docs site at `/docs`, a streamed CSV export, and an EventEmitter + fs event log.
+
 ## Repository layout
 
 ```
@@ -81,8 +85,8 @@ taskorbit.postman_collection.json   API collection incl. login + attack scenario
 ## Testing
 
 ```bash
-cd node-backend && npm test      # 342 Jest + Supertest tests
-cd frontend     && npm test      # 79 Vitest + Testing Library tests
+cd node-backend && npm test      # 349 Jest + Supertest tests
+cd frontend     && npm test      # 89 Vitest + Testing Library tests
 cd frontend     && npm run lint && npm run build
 ```
 
